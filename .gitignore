@@ -1,0 +1,18 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+.vscode/
+
+# Temp files
+*.tmp
+*.bak
+
+# Sensitive data (if any skills store credentials)
+credentials/
+*.pem
+*.key
+.env

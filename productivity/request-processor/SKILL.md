@@ -91,7 +91,7 @@ DECLINED/
 9. Produce a clear final report as your final output text.
    - The cron job system auto-delivers this report to the user's Telegram home channel.
    - Do NOT call `send_message` yourself.
-   - If INBOX was empty, respond with exactly `No pending requests.` and nothing else.
+   - **If INBOX was empty**, respond with exactly `[SILENT]` and nothing else — this suppresses Telegram delivery.
 
 ## Request Types
 
@@ -141,10 +141,10 @@ Do NOT use `rm -r` — move the folder first, then remove it if needed.
 
 ### Cron Job Telegram Delivery
 - The cron job system auto-delivers the final response to Telegram — do NOT call `send_message`
-- If INBOX is empty, respond with `No pending requests.` and nothing else.
+- **If INBOX is empty**, respond with `[SILENT]` exactly — this suppresses Telegram delivery.
 
 ### Empty INBOX
-- If no requests found, respond with `No pending requests.` exactly.
+- If no requests found, respond with `[SILENT]` exactly.
 
 ### Bug Fixes vs Research
 - Bug fixes go directly to the webui repo — edit the source, write a NOTE.md, move folder to DONE

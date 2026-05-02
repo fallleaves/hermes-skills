@@ -303,13 +303,13 @@
     "archived_at": null,
     "created_at": "2026-05-02T00:35:48.981476+00:00",
     "last_patched_at": "2026-05-02T10:24:12.688581+00:00",
-    "last_used_at": "2026-05-02T10:19:44.704286+00:00",
-    "last_viewed_at": "2026-05-02T10:19:44.701883+00:00",
+    "last_used_at": "2026-05-02T11:09:54.398334+00:00",
+    "last_viewed_at": "2026-05-02T11:09:54.395642+00:00",
     "patch_count": 3,
     "pinned": false,
     "state": "active",
-    "use_count": 4,
-    "view_count": 4
+    "use_count": 5,
+    "view_count": 5
   },
   "subagent-driven-development": {
     "archived_at": null,

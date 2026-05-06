@@ -1,6 +1,6 @@
 ---
 name: claude-code
-description: Delegate coding tasks to Claude Code (Anthropic's CLI agent). Use for building features, refactoring, PR reviews, and iterative coding. Requires the claude CLI installed.
+description: "Delegate coding to Claude Code CLI (features, PRs)."
 version: 2.2.0
 author: Hermes Agent + Teknium
 license: MIT
@@ -633,48 +633,6 @@ Configure in `.claude/settings.json` (project) or `~/.claude/settings.json` (glo
 }
 ```
 
-## WebSearch with Custom Models (Critical: Built-in WebSearch Requires Anthropic API)
-
-Claude Code's built-in `WebSearch` tool **does NOT work with custom models** (MiniMax, OpenRouter, Groq, or any third-party provider). It calls the Anthropic Messages API directly and only functions when using Anthropic's own models.
-
-**Symptoms:**
-- `WebSearch` tool silently returns no results or times out
-- No error message — it just appears broken
-- Works fine with `sonnet`/`opus`/`haiku`, breaks with any custom endpoint
-
-**Fix:** Add a Brave Search MCP server (or any search MCP server). This routes search through a local MCP tool, completely bypassing the model requirement.
-
-```bash
-# Get Brave API key: https://brave.com/search/api/ (2,000 searches/month free)
-
-# Find npm global root
-npm root -g
-# → e.g. /home/user/.nvm/versions/node/v24.14.1/lib/node_modules
-
-# Add Brave Search MCP — use FULL path to dist/index.js, NOT the .bin symlink
-# Global npm packages frequently fail to create .bin symlinks on install
-claude mcp add-json brave-search --scope user '{
-  "command": "node",
-  "args": ["/home/user/.nvm/versions/node/v24.14.1/lib/node_modules/@modelcontextprotocol/server-brave-search/dist/index.js", "--transport", "stdio"],
-  "env": { "BRAVE_API_KEY": "your-key-here" }
-}'
-
-# Verify
-claude mcp list
-# Should show: brave-search: ... - ✓ Connected
-```
-
-**Quick-add alternative** (avoids path hunting):
-```bash
-claude mcp add-json brave-search --scope user '{
-  "command": "npx",
-  "args": ["-y", "@modelcontextprotocol/server-brave-search"],
-  "env": { "BRAVE_API_KEY": "your-key-here" }
-}'
-```
-
-**Other search MCP servers work too** — any MCP tool with `search` in its name becomes available as a native Claude Code tool automatically.
-
 ## MCP Integration
 
 Add external tool servers for databases, APIs, and services:
@@ -689,88 +647,6 @@ terminal(command="claude mcp add -s local postgres -- npx @anthropic-ai/server-p
 # Puppeteer for web testing
 terminal(command="claude mcp add puppeteer -- npx @anthropic-ai/server-puppeteer", timeout=30)
 ```
-
-### MCP Server for Web Search (Brave Search)
-
-Claude Code's built-in WebSearch requires Anthropic's native API — it does NOT work with custom models (MiniMax, OpenRouter, etc.). To get web search with custom models, add a Brave Search MCP server:
-
-**Step 1:** Get a Brave API key at https://brave.com/search/api/ (2,000 searches/month free)
-
-**Step 2:** Install globally:
-```bash
-npm install -g @modelcontextprotocol/server-brave-search
-```
-
-**Step 3:** Add via `claude mcp add-json` with the FULL path to `node` + the `dist/index.js` entry point. Many MCP packages fail to create `.bin` symlinks on install, so using the binary name directly will fail with "command not found".
-
-```bash
-# Find the correct path (packages install to npm's global node_modules):
-npm root -g
-# e.g. /home/user/.nvm/versions/node/v24.14.1/lib/node_modules
-
-# Then add with full path — the binary is at:
-#   <npm_root>/@modelcontextprotocol/server-brave-search/dist/index.js
-# NOT at the .bin symlink (which often doesn't exist)
-claude mcp add-json brave-search --scope user '{
-  "command": "node",
-  "args": ["/home/user/.nvm/versions/node/v24.14.1/lib/node_modules/@modelcontextprotocol/server-brave-search/dist/index.js", "--transport", "stdio"],
-  "env": {
-    "BRAVE_API_KEY": "your-key-here"
-  }
-}'
-```
-
-**Verification:**
-```bash
-claude mcp list
-# Should show: brave-search: ... - ✓ Connected
-```
-
-**Test with:**
-```
-"Search the web for latest AI news"
-"What is the weather in Tokyo?"
-```
-
-> ### Verifying and Debugging MCP Server Connection
-
-If `claude mcp list` shows "Failed to connect":
-
-1. **Most common cause:** The `command` field points to a binary symlink that doesn't exist (common with global npm installs — packages often fail to create `.bin` symlinks properly).
-
-2. **Debug the actual binary path:**
-   ```bash
-   npm root -g  # e.g. /home/user/.nvm/versions/node/vX.X.X/lib/node_modules
-   ls <npm_root>/<package>/dist/  # find index.js
-   node <npm_root>/<package>/dist/index.js --help  # verify it works
-   ```
-
-3. **Correct config format** (not the bare binary name):
-   ```json
-   {
-     "command": "node",
-     "args": ["/home/user/.nvm/versions/node/v24.14.1/lib/node_modules/@modelcontextprotocol/server-brave-search/dist/index.js", "--transport", "stdio"],
-     "env": { "BRAVE_API_KEY": "your-key" }
-   }
-   ```
-
-4. **Alternative: use npx for immediate execution** (avoids path hunting entirely):
-   ```bash
-   claude mcp add-json brave-search --scope user '{
-     "command": "npx",
-     "args": ["-y", "@modelcontextprotocol/server-brave-search"],
-     "env": { "BRAVE_API_KEY": "your-key" }
-   }'
-   ```
-
-> **Note:** `--scope user` writes to `~/.claude.json` globally. Omit `--scope user` for project-local config.
-
-### Pitfall: `--scope user` vs project scopes
-- `--scope user` → `~/.claude.json` (all projects)
-- No flag → project-local `.mcp.json` (git-tracked, shared with team)
-- `--scope local` → `.claude/settings.local.json` (gitignored, personal)
-
-Use `--scope user` for personal MCP servers like search tools. Don't accidentally commit API keys to git by using project scope.
 
 ### MCP Scopes
 | Flag | Scope | Storage |
@@ -852,9 +728,7 @@ Use `/context` in interactive mode to see a colored grid of context usage. Key t
 9. **Background tmux sessions persist** — always clean up with `tmux kill-session -t <name>` when done.
 10. **Slash commands (like `/commit`) only work in interactive mode** — in `-p` mode, describe the task in natural language instead.
 11. **`--bare` skips OAuth** — requires `ANTHROPIC_API_KEY` env var or an `apiKeyHelper` in settings.
-12. **`opacity` as a plain HTML attribute doesn't work in Next.js/React JSX** — `<div opacity={0.5}>` is invalid. Always use `style={{ opacity: 0.5 }}`.
-13. **Never wrap a `<button>` inside a `<Link>` (Next.js)** — this causes navigation issues. Use `useRouter` and call `router.push()` directly in the button's `onClick` instead: `<button onClick={() => router.push('/path')}>`.
-14. **Context degradation is real** — AI output quality measurably degrades above 70% context window usage. Monitor with `/context` and proactively `/compact`.
+12. **Context degradation is real** — AI output quality measurably degrades above 70% context window usage. Monitor with `/context` and proactively `/compact`.
 
 ## Rules for Hermes Agents
 

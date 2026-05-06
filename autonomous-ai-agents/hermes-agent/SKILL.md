@@ -1,6 +1,6 @@
 ---
 name: hermes-agent
-description: Complete guide to using and extending Hermes Agent — CLI usage, setup, configuration, spawning additional agents, gateway platforms, skills, voice, tools, profiles, and a concise contributor reference. Load this skill when helping users configure Hermes, troubleshoot issues, spawn agent instances, or make code contributions.
+description: "Configure, extend, or contribute to Hermes Agent."
 version: 2.0.0
 author: Hermes Agent + Teknium
 license: MIT
@@ -115,7 +115,7 @@ hermes tools disable NAME   Disable a toolset
 
 hermes skills list          List installed skills
 hermes skills search QUERY  Search the skills hub
-hermes skills install ID    Install a skill
+hermes skills install ID    Install a skill (ID can be a hub identifier OR a direct https://…/SKILL.md URL; pass --name to override when frontmatter has no name)
 hermes skills inspect ID    Preview without installing
 hermes skills config        Enable/disable skills per platform
 hermes skills check         Check for updates
@@ -371,8 +371,6 @@ Full config reference: https://hermes-agent.nousresearch.com/docs/user-guide/con
 
 Full provider docs: https://hermes-agent.nousresearch.com/docs/integrations/providers
 
-**MiniMax internals:** See `references/minimax-provider.md` — covers the three MiniMax variants, dot preservation, beta headers, title-generation routing, and the credential isolation guard.
-
 ### Toolsets
 
 Enable/disable via `hermes tools` (interactive) or `hermes tools enable/disable NAME`.
@@ -404,6 +402,63 @@ Tool changes take effect on `/reset` (new session). They do NOT apply mid-conver
 
 ---
 
+## Security & Privacy Toggles
+
+Common "why is Hermes doing X to my output / tool calls / commands?" toggles — and the exact commands to change them. Most of these need a fresh session (`/reset` in chat, or start a new `hermes` invocation) because they're read once at startup.
+
+### Secret redaction in tool output
+
+Secret redaction is **off by default** — tool output (terminal stdout, `read_file`, web content, subagent summaries, etc.) passes through unmodified. If the user wants Hermes to auto-mask strings that look like API keys, tokens, and secrets before they enter the conversation context and logs:
+
+```bash
+hermes config set security.redact_secrets true       # enable globally
+```
+
+**Restart required.** `security.redact_secrets` is snapshotted at import time — toggling it mid-session (e.g. via `export HERMES_REDACT_SECRETS=true` from a tool call) will NOT take effect for the running process. Tell the user to run `hermes config set security.redact_secrets true` in a terminal, then start a new session. This is deliberate — it prevents an LLM from flipping the toggle on itself mid-task.
+
+Disable again with:
+```bash
+hermes config set security.redact_secrets false
+```
+
+### PII redaction in gateway messages
+
+Separate from secret redaction. When enabled, the gateway hashes user IDs and strips phone numbers from the session context before it reaches the model:
+
+```bash
+hermes config set privacy.redact_pii true    # enable
+hermes config set privacy.redact_pii false   # disable (default)
+```
+
+### Command approval prompts
+
+By default (`approvals.mode: manual`), Hermes prompts the user before running shell commands flagged as destructive (`rm -rf`, `git reset --hard`, etc.). The modes are:
+
+- `manual` — always prompt (default)
+- `smart` — use an auxiliary LLM to auto-approve low-risk commands, prompt on high-risk
+- `off` — skip all approval prompts (equivalent to `--yolo`)
+
+```bash
+hermes config set approvals.mode smart       # recommended middle ground
+hermes config set approvals.mode off         # bypass everything (not recommended)
+```
+
+Per-invocation bypass without changing config:
+- `hermes --yolo …`
+- `export HERMES_YOLO_MODE=1`
+
+Note: YOLO / `approvals.mode: off` does NOT turn off secret redaction. They are independent.
+
+### Shell hooks allowlist
+
+Some shell-hook integrations require explicit allowlisting before they fire. Managed via `~/.hermes/shell-hooks-allowlist.json` — prompted interactively the first time a hook wants to run.
+
+### Disabling the web/browser/image-gen tools
+
+To keep the model away from network or media tools entirely, open `hermes tools` and toggle per-platform. Takes effect on next session (`/reset`). See the Tools & Skills section above.
+
+---
+
 ## Voice & Transcription
 
 ### STT (Voice → Text)
@@ -427,29 +482,6 @@ stt:
 
 ### TTS (Text → Voice)
 
-**Two independent TTS paths exist:**
-
-1. **Auto-TTS** — When you send a voice message, Hermes auto-generates a voice reply. Gated by `voice.auto_tts` + per-chat opt-in.
-2. **Manual TTS tool** — Explicit `text_to_speech` calls anywhere in the session. Controlled solely by `tts.provider`.
-
-Run `hermes setup` → select **"Configure Text-to-Speech"** for the full interactive wizard. No dedicated `hermes setup tts` subcommand — use the wizard or edit `config.yaml` directly.
-
-**`~/.hermes/config.yaml` structure:**
-```yaml
-tts:
-  provider: edge            # edge | elevenlabs | openai | minimax | mistral | gemini | neutts | kittentts | null
-  speed: 1.0               # Global speed (0.5–2.0)
-
-  # Per-provider block (same shape for all providers):
-  minimax:
-    model: speech-2.8-hd
-    voice_id: English_Graceful_Lady   # Or your cloned voice ID
-    speed: 1.0
-    base_url: https://api.minimax.io/v1/t2a_v2
-```
-
-**To disable TTS entirely:** Set `tts.provider: null` — this makes the manual TTS tool fail gracefully. Auto-TTS is controlled separately (see `voice.auto_tts` below).
-
 | Provider | Env var | Free? |
 |----------|---------|-------|
 | Edge TTS | None | Yes (default) |
@@ -458,21 +490,6 @@ tts:
 | MiniMax | `MINIMAX_API_KEY` | Paid |
 | Mistral (Voxtral) | `MISTRAL_API_KEY` | Paid |
 | NeuTTS (local) | None (`pip install neutts[all]` + `espeak-ng`) | Free |
-| KittenTTS (local) | None | Free |
-
-**Voice mode (CLI) and auto-TTS (gateway) config:**
-```yaml
-voice:
-  record_key: ctrl+b
-  max_recording_seconds: 120
-  auto_tts: false        # Auto-generate voice reply when YOU send voice (gateway)
-  beep_enabled: true
-```
-
-Auto-TTS decision logic (`_should_auto_tts_for_chat` in `gateway/platforms/base.py`):
-1. `/voice on` or `/voice tts` → always fire (even if `auto_tts: false`)
-2. `/voice off` → never fire
-3. Otherwise → use `voice.auto_tts` global default
 
 Voice commands: `/voice on` (voice-to-voice), `/voice tts` (always voice), `/voice off`.
 
@@ -602,6 +619,61 @@ Common gateway problems:
 - **Discord bot silent**: Must enable **Message Content Intent** in Bot → Privileged Gateway Intents.
 - **Slack bot only works in DMs**: Must subscribe to `message.channels` event. Without it, the bot ignores public channels.
 - **Windows HTTP 400 "No models provided"**: Config file encoding issue (BOM). Ensure `config.yaml` is saved as UTF-8 without BOM.
+
+### Curator misidentifies bundled skills as agent-created
+
+> Full technical reference: `references/curator.md` — includes the three-hash problem, reset workflow, and verification checklist.
+
+**Root cause:** The curator's `is_agent_created()` function (in `skill_usage.py`) marks any skill as agent-created if it's absent from `.bundled_manifest`. If the manifest is incomplete (missing bundled skills), the curator will archive them as stale user-created skills.
+
+**Verification checklist — run after ANY manifest update or curator run:**
+```python
+import sys; sys.path.insert(0, '/home/jfeng/.hermes/hermes-agent')
+from tools.skills_sync import _read_manifest, _discover_bundled_skills, _get_bundled_dir
+
+bundled_dir = _get_bundled_dir()
+bundled_skills = _discover_bundled_skills(bundled_dir)
+bundled_by_name = {name: path for name, path in bundled_skills}
+manifest = _read_manifest()
+
+missing = set(bundled_by_name.keys()) - set(manifest.keys())
+extra   = set(manifest.keys()) - set(bundled_by_name.keys())
+print(f"Missing from manifest: {sorted(missing)}")
+print(f"Extra in manifest:     {sorted(extra)}")
+assert not missing and not extra, "Manifest is out of sync with bundled source!"
+```
+
+**Full curator reset procedure (wipe + re-align):**
+```python
+import sys, shutil
+sys.path.insert(0, '/home/jfeng/.hermes/hermes-agent')
+from pathlib import Path
+from tools.skills_sync import (_read_manifest, _write_manifest, _discover_bundled_skills,
+    _get_bundled_dir, _compute_relative_dest, _dir_hash, SKILLS_DIR)
+
+bundled_dir = _get_bundled_dir()
+bundled_skills = _discover_bundled_skills(bundled_dir)
+bundled_by_name = {name: path for name, path in bundled_skills}
+manifest = _read_manifest()
+
+# Align manifest: record what's ACTUALLY on disk (not old baseline)
+for name, bundled_path in bundled_by_name.items():
+    dest = _compute_relative_dest(bundled_path, bundled_dir)
+    manifest[name] = _dir_hash(dest)  # disk truth
+
+_write_manifest(manifest)
+
+# Wipe curator artifacts
+shutil.rmtree(Path('/home/jfeng/.hermes/skills/.archive'), ignore_errors=True)
+Path('/home/jfeng/.hermes/skills/.curator_state').unlink(missing_ok=True)
+
+# Verify
+assert len(manifest) == len(bundled_by_name) == 89
+result = sync_skills(quiet=True)
+print(result)
+```
+
+**The 61-problem:** After aligning manifest to disk, `sync_skills()` will report 61 skills as "updated" on next run — because `bundled_hash ≠ manifest_hash` now. These skills WILL be overwritten on `hermes update` unless you restore them from `.bak` first. The user-modified skills are only safe because sync_skills sees `disk != origin_hash` and skips — but after the above fix, `disk == manifest_hash`, so skip logic fails. If preserving user patches matters, do NOT run `sync_skills` after this realignment; the manifest alignment itself is the goal.
 
 ### Auxiliary models not working
 If `auxiliary` tasks (vision, compression, session_search) fail silently, the `auto` provider can't find a backend. Either set `OPENROUTER_API_KEY` or `GOOGLE_API_KEY`, or explicitly configure each auxiliary task's provider:

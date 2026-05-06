@@ -129,6 +129,18 @@ When the research skill produces output:
 ### Cron Job `deliver` Setting
 **Critical:** The cron job that triggers this skill MUST have `deliver: "origin"` — NOT `"local"`. If set to `"local"`, output is saved to `~/.hermes/cron/output/` only and nothing reaches Telegram. Check with `cronjob(action="list")` and update with `cronjob(action="update", deliver="origin", job_id="...")` if needed.
 
+### ⚠️ Job Prompt vs Skill Content: Synchronization Required
+The cron scheduler builds the prompt by **concatenating**: `[skill content] + "\n\n" + [job's stored prompt]`. The job's stored prompt is evaluated AFTER the skill content and OVERRIDES it where they conflict.
+
+**Practical consequence:** Updating the skill file does NOT automatically update the job's stored prompt. If you change the skill to use `[SILENT]` but the job's stored prompt still says `"No pending requests."`, the job prompt wins and Telegram messages keep coming.
+
+**How to verify:**
+1. Run `cronjob(action="list")` and note the `prompt_preview`
+2. Or check `~/.hermes/cron/jobs.json` directly for the `prompt` field
+3. If the job prompt conflicts with the skill, update with `cronjob(action="update", prompt="...", job_id="...")`
+
+**Symptom:** Skill says one thing (e.g. `[SILENT]` for empty INBOX) but the cron job behaves differently despite skill being updated.
+
 ### Path Resolution
 - `~` is NOT expanded by file tools — always use **absolute paths** like `/home/jfeng/projects/wiki/requests/INBOX/`
 
@@ -145,6 +157,25 @@ Do NOT use `rm -r` — move the folder first, then remove it if needed.
 
 ### Empty INBOX
 - If no requests found, respond with `[SILENT]` exactly.
+
+### Job Prompt vs Skill Content (Critical)
+The cron job has its OWN stored `prompt` field that is independent of the skill. When you update a skill, existing jobs do NOT automatically pick up the change — their stored prompt stays as-is.
+
+If you fix a skill but the behavior doesn't change on the next cron run, check the job's prompt:
+```bash
+python3 -c "
+import json
+with open('/home/jfeng/.hermes/cron/jobs.json') as f:
+    data = json.load(f)
+for j in data['jobs']:
+    if j['id'] == 'd89090acd4d0':
+        print(j.get('prompt','')[-300:])
+        break
+"
+```
+If it contradicts the skill, update the job with `cronjob(action='update', prompt='...', job_id='...')`.
+
+This is why "update the skill" alone didn't fix the `[SILENT]` issue — the job's stored prompt at line 183 said `"No pending requests."` instead.
 
 ### Bug Fixes vs Research
 - Bug fixes go directly to the webui repo — edit the source, write a NOTE.md, move folder to DONE

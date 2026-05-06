@@ -1,8 +1,8 @@
 {
-  "last_report_path": "/home/jfeng/.hermes/logs/curator/20260430-081438",
-  "last_run_at": "2026-04-30T08:14:38.417995+00:00",
-  "last_run_duration_seconds": 1148.010372,
-  "last_run_summary": "auto: no changes; llm: no change",
+  "last_report_path": null,
+  "last_run_at": "2026-05-05T18:45:59.434918+00:00",
+  "last_run_duration_seconds": null,
+  "last_run_summary": "deferred first run — curator seeded, will run after one interval; use `hermes curator run --dry-run` to preview now",
   "paused": false,
-  "run_count": 1
+  "run_count": 0
 }

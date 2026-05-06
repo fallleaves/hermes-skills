@@ -64,6 +64,8 @@ Requires editing **6 files**:
 - No `onClose` prop
 - Fill center tab area: `height: '100%', width: '100%', overflow: 'hidden'`
 
+**Sub-tab state**: If the panel has internal tab navigation (e.g., Submit/Dashboard), store it in Zustand and push/restore through history. See "Tab Sub-State and Back Navigation" above — failure to do this causes the sub-tab to reset to default when navigating back from another tab.
+
 ### Overlay vs Tab Pattern
 
 **Overlays** (QuickSwitcher, FullTextSearch, TagsBrowser):
@@ -139,6 +141,58 @@ cd /home/jfeng/projects/wiki-webui && npm run build
 systemctl --user restart wiki-webui
 ```
 
+### Tab Sub-State and Back Navigation
+
+**Symptom**: Tab type switches correctly (e.g., graph → requests) but the **sub-state within the tab** resets. Example: user was on Dashboard tab, opened Graph, clicked Back — returned to Request Box but on the Submit sub-tab instead of Dashboard.
+
+**Root cause**: The tab sub-state (e.g., which of the Submit/Dashboard sub-tabs is active) was stored as React `useState` inside the panel component. Back/forward navigation restores the tab type from history but does NOT restore component-local state, causing it to reset to the default.
+
+**Fix: Store tab sub-state in Zustand, push it to history.**
+
+For tabs that have internal sub-navigation (e.g., Request Box's Submit/Dashboard, or any future panel with tab-like internal navigation):
+
+1. **Add a state field and setter to the WikiStore**:
+   ```typescript
+   // In WikiStore interface
+   requestsActiveTab: 'submit' | 'dashboard'
+   setRequestsActiveTab: (tab: 'submit' | 'dashboard') => void
+
+   // In store state (persist)
+   requestsActiveTab: 'submit' as const,
+   setRequestsActiveTab: (tab) => set({ requestsActiveTab: tab }),
+   ```
+
+2. **Extend `HistoryEntry` to carry sub-state**:
+   ```typescript
+   interface HistoryEntry {
+     type: 'file' | 'graph' | 'requests'
+     path?: string
+     // For 'requests' type: which sub-tab was active
+     requestsActiveTab?: 'submit' | 'dashboard'
+   }
+   ```
+
+3. **When opening a new tab type from a stateful tab, push the current sub-state to history** (e.g., `openGraphTab`):
+   ```typescript
+   filtered.push({ type: 'graph', requestsActiveTab: t.type === 'requests' ? requestsActiveTab : undefined })
+   ```
+
+4. **When restoring a tab from history, restore its sub-state** (in `goBack`/`goForward`):
+   ```typescript
+   ...(entry.type === 'requests' && entry.requestsActiveTab
+     ? { requestsActiveTab: entry.requestsActiveTab }
+     : {})
+   ```
+
+5. **Panel component reads sub-state from Zustand instead of local useState**:
+   ```typescript
+   const { requestsActiveTab, setRequestsActiveTab } = useWikiStore()
+   const activeTab = requestsActiveTab
+   const setActiveTab = setRequestsActiveTab
+   ```
+
+**Key rule**: Any tab with internal sub-navigation must persist that state in Zustand and push/restore it through the history stack. Never use component-local `useState` for tab-level UI state that needs to survive back/forward navigation.
+
 ### History Navigation Bug — Graph/Requests Back Button
 
 **Symptom**: Open Request Box → open Graph View → click Back → stays on Graph. Back button stays enabled (so `goBack` is called) but the tab content doesn't update. Closing/reopening the browser tab "resets" the bug.
@@ -152,9 +206,9 @@ systemctl --user restart wiki-webui
 - Zustand `renderCount` force-re-render trick
 - React `useEffect` + local state tick
 
-**Root cause**: Not conclusively identified. The "losing focus" reset pattern is the best lead. Possible causes: D3 zoom handler interfering with React event delegation on the button, CSS `position: fixed` overlay behavior in GraphView, or something specific to how the graph tab's DOM is structured.
+**Root cause**: D3/Three.js graph canvas intercepts pointer events on the nav buttons due to event bubbling/capture at the canvas level. The "losing focus" workaround works because it causes the canvas to relinquish event capture.
 
-**Workaround that works**: Click "Add a new tab" (or any action that causes the graph tab to lose DOM focus) then switch back — the back button works normally after that.
+**Fix**: Apply `pointerEvents: 'none'` to the graph container/overlay div AND `e.stopPropagation()` on the NavButtons onClick handler. The combination prevents the graph canvas from capturing button clicks. Experts confirmed this resolves the issue.
 
 **Debugging approach for next session**:
 - Add a visible click counter (`useState`) on the button to confirm the onClick fires
@@ -163,6 +217,33 @@ systemctl --user restart wiki-webui
 - The `EditorModeToggle` has a `canGoBack`/`canGoForward` check — verify these are correct: `(activeTab?.historyIndex ?? -1) > 0`
 
 > 📁 See `references/history-nav-bug-session.md` for the full debugging transcript (what was tried, what was ruled out, cleanup checklist).
+
+### Request Box API (`lib/requests.ts`)
+
+The request dashboard (`/requests/dashboard`) reads from `lib/requests.ts` which handles **two storage formats**:
+
+**Format A (flat)** — legacy:
+```
+DONE/req-20260502--xxxx.md   ← single file with frontmatter
+```
+
+**Format B (folder)** — agent's per-request isolation:
+```
+DONE/req-20260502--xxxx/
+├── request.md   ← copy of original submission with frontmatter
+└── NOTE.md      ← checkbox status: `- [x] Completed`
+```
+
+API responses include `isFolderBased: boolean` so the UI can adapt.
+
+Key functions:
+- `listRequests()` — detects format per entry, reads accordingly
+- `readRequestFromFolder(reqId)` — reads `{id}/request.md` + `{id}/NOTE.md`
+- `findRequestPath(reqId)` — finds either `DONE/{id}.md` or `DONE/{id}/`
+- `updateFolderNote(reqId, status)` — updates NOTE.md checkbox line
+- `convertFolderToFlat(reqId, status)` — converts Format B → Format A on reopen
+
+When a folder-based request is reopened (status → `new`), it is collapsed to flat format.
 
 ### React 19 Compatibility
 
@@ -177,3 +258,5 @@ systemctl --user restart wiki-webui
 | No close button on tab view | Correct — tab views should not have close buttons | Use back/forward to navigate away |
 | History navigation broken | `goBack`/`goForward` missing type in if condition | Add `\|\| entry.type === 'xxx'` |
 | Back button doesn't respond (graph/requests) | D3 SVG zoom captures pointer events before React fires | Apply `pointerEvents: 'none'` to graph container div as test; use D3 zoom `filter` option for proper fix |
+| Dashboard tab button shows 0 count when panel opens | `counts.all` computed from local `useState([])` — data not fetched until tab clicked | Add `useEffect(() => { fetchRequests() }, [])` on mount to prefetch |
+| Graph includes unwanted folders (e.g. `requests/`) | `walk()` in `app/api/graph/route.ts` recurses into all dirs | Add `if (entry.name === 'dirname') continue` in the `entry.isDirectory()` block. For `requests/`: `if (entry.name === 'requests') continue` |

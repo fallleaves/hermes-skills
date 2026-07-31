@@ -1,0 +1,48 @@
+{
+  "jobs": [
+    {
+      "id": "d89090acd4d0",
+      "name": "Request Box Processor",
+      "prompt": "Process all requests in the Request Box INBOX folder. For each new request:\n\n1. Read all `.md` files in `/home/jfeng/projects/wiki/requests/INBOX/`\n2. For each request:\n   a. Move it from `INBOX/` to `IN_PROGRESS/` by rewriting the file\n   b. Read the request body and understand what the user is asking for\n   c. Implement it if it's actionable (bug fix, wiki edit, webui change, etc.)\n   d. Move the file to `DONE/` with a `resolved:` note in frontmatter, OR move to `DECLINED/` with a reason if not actionable\n   e. If it's a question, answer it by adding to the wiki and moving to DONE\n3. If no requests in INBOX, just check `IN_PROGRESS/` for stale items (older than 24h) and report status\n\nWork in these directories:\n- Wiki content: `/home/jfeng/projects/wiki/wiki/`\n- WebUI code: `/home/jfeng/projects/wiki-webui/`\n- Requests: `/home/jfeng/projects/wiki/requests/`\n\nIf there were errors, report those too.\n\nIf the INBOX is empty, respond with `[SILENT]` exactly and nothing else.",
+      "skills": [
+        "request-processor"
+      ],
+      "skill": "request-processor",
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": null,
+      "context_from": null,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 60,
+        "display": "every 60m"
+      },
+      "schedule_display": "every 60m",
+      "repeat": {
+        "times": null,
+        "completed": 609
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-05-02T00:09:02.283872+00:00",
+      "next_run_at": "2026-05-27T12:43:17.631445+00:00",
+      "last_run_at": "2026-05-27T11:43:17.631445+00:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "origin",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "5684104233",
+        "chat_name": "Fourth June",
+        "thread_id": null
+      },
+      "enabled_toolsets": null,
+      "workdir": null
+    }
+  ],
+  "updated_at": "2026-05-27T11:43:17.631693+00:00"
+}

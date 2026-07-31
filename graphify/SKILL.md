@@ -1,6 +1,6 @@
 ---
 name: graphify
-description: any input (code, docs, papers, images) → knowledge graph → clustered communities → HTML + JSON + audit report
+description: "any input (code, docs, papers, images) → knowledge graph → clustered communities → HTML + JSON + audit report. Use when user asks any question about a codebase, project content, architecture, or file relationships — especially if graphify-out/ exists. Provides persistent graph with god nodes, community detection, and BFS/DFS query tools."
 trigger: /graphify
 ---
 
@@ -51,6 +51,8 @@ Use it for:
 
 ## What You Must Do When Invoked
 
+If the user invoked `/graphify --help` or `/graphify -h` (with no other arguments), print the contents of the `## Usage` section above verbatim and stop. Do not run any commands, do not detect files, do not default the path to `.`. Just print the Usage block and return.
+
 If no path was given, use `.` (current directory). Do not ask the user for a path.
 
 Follow these steps in order. Do not skip steps.
@@ -58,30 +60,53 @@ Follow these steps in order. Do not skip steps.
 ### Step 1 - Ensure graphify is installed
 
 ```bash
-# Detect the correct Python interpreter (handles pipx, venv, system installs)
+# Detect the correct Python interpreter (handles uv tool, pipx, venv, system installs)
+PYTHON=""
 GRAPHIFY_BIN=$(which graphify 2>/dev/null)
-if [ -n "$GRAPHIFY_BIN" ]; then
-    PYTHON=$(head -1 "$GRAPHIFY_BIN" | tr -d '#!')
-    case "$PYTHON" in
-        *[!a-zA-Z0-9/_.-]*) PYTHON="python3" ;;
-    esac
-else
-    PYTHON="python3"
+# 1. uv tool installs — most reliable on modern Mac/Linux
+if [ -z "$PYTHON" ] && command -v uv >/dev/null 2>&1; then
+    _UV_PY=$(uv tool run graphifyy python -c "import sys; print(sys.executable)" 2>/dev/null)
+    [ -n "$_UV_PY" ] && PYTHON="$_UV_PY"
 fi
-"$PYTHON" -c "import graphify" 2>/dev/null || "$PYTHON" -m pip install graphifyy -q 2>/dev/null || "$PYTHON" -m pip install graphifyy -q --break-system-packages 2>&1 | tail -3
+# 2. Read shebang from graphify binary (pipx and direct pip installs)
+if [ -z "$PYTHON" ] && [ -n "$GRAPHIFY_BIN" ]; then
+    _SHEBANG=$(head -1 "$GRAPHIFY_BIN" | tr -d '#!')
+    case "$_SHEBANG" in
+        *[!a-zA-Z0-9/_.-]*) ;;
+        *) "$_SHEBANG" -c "import graphify" 2>/dev/null && PYTHON="$_SHEBANG" ;;
+    esac
+fi
+# 3. Fall back to python3
+if [ -z "$PYTHON" ]; then PYTHON="python3"; fi
+if ! "$PYTHON" -c "import graphify" 2>/dev/null; then
+    if command -v uv >/dev/null 2>&1; then
+        uv tool install --upgrade graphifyy -q 2>&1 | tail -3
+        _UV_PY=$(uv tool run graphifyy python -c "import sys; print(sys.executable)" 2>/dev/null)
+        [ -n "$_UV_PY" ] && PYTHON="$_UV_PY"
+    else
+        "$PYTHON" -m pip install graphifyy -q 2>/dev/null \
+          || "$PYTHON" -m pip install graphifyy -q --break-system-packages 2>&1 | tail -3
+    fi
+fi
 mkdir -p graphify-out
-# Write interpreter path for all subsequent steps
-"$PYTHON" -c "import sys; open('graphify-out/.graphify_python', 'w').write(sys.executable)"
+# Write interpreter path for all subsequent steps (persists across invocations)
+"$PYTHON" -c "import sys; open('graphify-out/.graphify_python', 'w', encoding='utf-8').write(sys.executable)"
+# Save scan root so `graphify update` (no args) knows where to look next time
+echo "$(cd INPUT_PATH && pwd)" > graphify-out/.graphify_root
 ```
 
 If the import succeeds, print nothing and move straight to Step 2.
 
-**In every subsequent bash block, replace `python3` with `$(cat .graphify_python)` to use the correct interpreter.**
+**In every subsequent bash block, replace `python3` with `$(cat graphify-out/.graphify_python)` to use the correct interpreter.**
+
+> **OpenClaw platform note:** Subagents run in their own isolated context. They resolve relative paths (like `graphify-out/.graphify_chunk_*.json`) from their own working directory (`~`), NOT the project directory. Always capture subagent output to a known absolute path, then move files to the project dir in a follow-up step. Never assume subagent stdout lands in the project dir.
+>
+> **Hermes HOME-override pitfall:** When running on Hermes (gateway/cron daemon), `HOME` is overridden to the profile's home dir (e.g. `~/.hermes/profiles/jf/home/`). Tools using `Path.home()` — including graphify's own `providers.json` lookup and the `.graphify_python` file — resolve to that override directory, NOT the real user home. This can cause custom providers registered via `graphify provider add` to silently save to the wrong place. **Fix:** Use the skill-path semantic extraction (subagent-based) instead of the CLI backend path — it uses the agent's own LLM provider and avoids `Path.home()` entirely. The CLI is still fine for `detect`, `hook install`, `cluster-only`, and `update` (AST-only).
 
 ### Step 2 - Detect files
 
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import json
 from graphify.detect import detect
 from pathlib import Path
@@ -168,7 +193,7 @@ Note: Parallelizing AST + semantic saves 5-15s on large corpora. AST is determin
 For any code files detected, run AST extraction in parallel with Part B subagents:
 
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import sys, json
 from graphify.extract import collect_files, extract
 from pathlib import Path
@@ -202,7 +227,7 @@ Print: `"Semantic extraction: N files (sequential — OpenClaw)"`
 Before dispatching any subagents, check which files already have cached extraction results:
 
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import json
 from graphify.cache import check_semantic_cache
 from pathlib import Path
@@ -235,7 +260,7 @@ Process each file one at a time. For each file:
    - INFERRED: reasonable inference (shared structure, implied dependency)
    - AMBIGUOUS: uncertain — flag it, do not omit
    - Code files: semantic edges AST cannot find. Do not re-extract imports.
-   - Doc/paper files: named concepts, entities, citations. Store rationale (WHY decisions were made) as a `rationale` attribute on the relevant node, not as a separate node. When adding `calls` edges: source is caller, target is callee.
+   - Doc/paper files: named concepts, entities, citations. Store rationale (WHY decisions were made) as a `rationale` attribute on the relevant node, not as a separate node. Use `file_type:"rationale"` for concept-like nodes (ideas, principles, mechanisms). Do NOT invent file_types like `concept`. When adding `calls` edges: source is caller, target is callee.
    - Image files: use vision — understand what the image IS, not just OCR
    - DEEP_MODE (if --mode deep): be aggressive with INFERRED edges
    - Semantic similarity: if two concepts solve the same problem without a structural link, add `semantically_similar_to` INFERRED edge (confidence 0.6-0.95). Non-obvious cross-file links only.
@@ -244,19 +269,95 @@ Process each file one at a time. For each file:
 3. Accumulate results across all files
 
 Schema for each file's output:
-{"nodes":[{"id":"filestem_entityname","label":"Human Readable Name","file_type":"code|document|paper|image","source_file":"relative/path","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null}],"edges":[{"source":"node_id","target":"node_id","relation":"calls|implements|references|cites|conceptually_related_to|shares_data_with|semantically_similar_to|rationale_for","confidence":"EXTRACTED|INFERRED|AMBIGUOUS","confidence_score":1.0,"source_file":"relative/path","source_location":null,"weight":1.0}],"hyperedges":[{"id":"snake_case_id","label":"Human Readable Label","nodes":["node_id1","node_id2","node_id3"],"relation":"participate_in|implement|form","confidence":"EXTRACTED|INFERRED","confidence_score":0.75,"source_file":"relative/path"}],"input_tokens":0,"output_tokens":0}
+{"nodes":[{"id":"filestem_entityname","label":"Human Readable Name","file_type":"code|document|paper|image|rationale","source_file":"relative/path","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null}],"edges":[{"source":"node_id","target":"node_id","relation":"calls|implements|references|cites|conceptually_related_to|shares_data_with|semantically_similar_to|rationale_for","confidence":"EXTRACTED|INFERRED|AMBIGUOUS","confidence_score":1.0,"source_file":"relative/path","source_location":null,"weight":1.0}],"hyperedges":[{"id":"snake_case_id","label":"Human Readable Label","nodes":["node_id1","node_id2","node_id3"],"relation":"participate_in|implement|form","confidence":"EXTRACTED|INFERRED","confidence_score":0.75,"source_file":"relative/path"}],"input_tokens":0,"output_tokens":0}
 
 After processing all files, write the accumulated result to `.graphify_semantic_new.json`.
 
-**Step B3 - Cache and merge**
+**Chunk file schema handling:** Subagents may produce inconsistent schemas across chunks. After all subagents complete, inspect the actual keys in each chunk file before merging:
+- Schema A (used by some subagents): `{"entities": [...], "relationships": [...]}`
+- Schema B (used by other subagents): `{"nodes": [...], "edges": [...]}`
+Both must be normalized to the canonical `{"nodes": [...], "edges": [...]}` format before the merge step. Node IDs may use different conventions (`file_entityname` vs bare names like `"Optimizer"`); deduplicate by `id` field during merge. Edge `source`/`target` values must reference the normalized node IDs.
+
+### Step B3 - Cache and merge
 
 For the accumulated result:
 
 If more than half the chunks failed, stop and tell the user.
 
+Merge all chunk files into `.graphify_semantic_new.json`. **After each Agent call completes, read the real token counts from the Agent tool result's `usage` field and write them back into the chunk JSON before merging** — the chunk JSON itself always has placeholder zeros. Then normalize and merge:
+```bash
+$(cat graphify-out/.graphify_python) -c "
+import json, glob
+from pathlib import Path
+
+def normalize(c):
+    '''Schema A: {entities, relationships} → {nodes, edges}'''
+    if 'entities' in c and 'relationships' in c:
+        nodes = []
+        for e in c.get('entities', []):
+            fid = e.get('id', '') or f\"{Path(e.get('file','')).stem}_{e.get('name','')}\"
+            nodes.append({'id': fid, 'label': e.get('name', fid), 'file_type': 'code',
+                          'source_file': e.get('file', ''), 'source_location': None,
+                          'captured_at': None, 'author': None, 'contributor': None})
+        edges = []
+        for r in c.get('relationships', []):
+            from_f, to_v, rel = r.get('from',''), r.get('to',''), r.get('type','')
+            stem = Path(from_f).stem if from_f else ''
+            # Build edge source/target using stem-based IDs
+            src = f'{stem}_{stem}' if stem else to_v
+            tgt = f'{stem}_{to_v.split(\".\")[-1]}' if stem else to_v
+            edges.append({'source': src, 'target': tgt, 'relation': rel,
+                           'confidence': 'EXTRACTED', 'confidence_score': 1.0,
+                           'source_file': from_f, 'source_location': None, 'weight': 1.0})
+        return {'nodes': nodes, 'edges': edges, 'hyperedges': []}
+    # Schema B already has nodes/edges
+    return {'nodes': c.get('nodes', []), 'edges': c.get('edges', []),
+            'hyperedges': c.get('hyperedges', [])}
+
+chunks = sorted(glob.glob('graphify-out/.graphify_chunk_*.json'))
+all_nodes, all_edges, all_hyperedges = [], [], []
+seen_ids = set()
+for c_path in chunks:
+    with open(c_path) as f:
+        c = json.load(f)
+    conv = normalize(c)
+    for n in conv['nodes']:
+        if n['id'] not in seen_ids:
+            seen_ids.add(n['id']); all_nodes.append(n)
+    all_edges.extend(conv['edges'])
+    all_hyperedges.extend(conv.get('hyperedges', []))
+Path('graphify-out/.graphify_semantic_new.json').write_text(json.dumps({
+    'nodes': all_nodes, 'edges': all_edges, 'hyperedges': all_hyperedges,
+    'input_tokens': 0, 'output_tokens': 0,
+}, indent=2))
+print(f'Merged {len(chunks)} chunks: {len(all_nodes)} nodes, {len(all_edges)} edges')
+"
+```bash
+$(cat graphify-out/.graphify_python) -c "
+import json, glob
+from pathlib import Path
+
+chunks = sorted(glob.glob('graphify-out/.graphify_chunk_*.json'))
+all_nodes, all_edges, all_hyperedges = [], [], []
+total_in, total_out = 0, 0
+for c in chunks:
+    d = json.loads(Path(c).read_text())
+    all_nodes += d.get('nodes', [])
+    all_edges += d.get('edges', [])
+    all_hyperedges += d.get('hyperedges', [])
+    total_in += d.get('input_tokens', 0)
+    total_out += d.get('output_tokens', 0)
+Path('graphify-out/.graphify_semantic_new.json').write_text(json.dumps({
+    'nodes': all_nodes, 'edges': all_edges, 'hyperedges': all_hyperedges,
+    'input_tokens': total_in, 'output_tokens': total_out,
+}, indent=2))
+print(f'Merged {len(chunks)} chunks: {total_in:,} in / {total_out:,} out tokens')
+"
+```
+
 Save new results to cache:
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import json
 from graphify.cache import save_semantic_cache
 from pathlib import Path
@@ -269,7 +370,7 @@ print(f'Cached {saved} files')
 
 Merge cached + new results into `.graphify_semantic.json`:
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import json
 from pathlib import Path
 
@@ -302,7 +403,7 @@ Clean up temp files: `rm -f .graphify_cached.json .graphify_uncached.txt .graphi
 #### Part C - Merge AST + semantic into final extraction
 
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import sys, json
 from pathlib import Path
 
@@ -337,7 +438,7 @@ print(f'Merged: {total} nodes, {edges} edges ({len(ast[\"nodes\"])} AST + {len(s
 
 ```bash
 mkdir -p graphify-out
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import sys, json
 from graphify.build import build_from_json
 from graphify.cluster import cluster, score_all
@@ -390,7 +491,7 @@ Read `.graphify_analysis.json`. For each community key, look at its node labels 
 Then regenerate the report and save the labels for the visualizer:
 
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import sys, json
 from graphify.build import build_from_json
 from graphify.cluster import score_all
@@ -430,7 +531,7 @@ Replace INPUT_PATH with the actual path.
 If `--obsidian` was given:
 
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import sys, json
 from graphify.build import build_from_json
 from graphify.export import to_obsidian, to_canvas
@@ -461,7 +562,7 @@ print('  _COMMUNITY_* - overview notes with cohesion scores and dataview queries
 Generate the HTML graph (always, unless `--no-viz`):
 
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import sys, json
 from graphify.build import build_from_json
 from graphify.export import to_html
@@ -488,7 +589,7 @@ else:
 **If `--neo4j`** - generate a Cypher file for manual import:
 
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import sys, json
 from graphify.build import build_from_json
 from graphify.export import to_cypher
@@ -503,7 +604,7 @@ print('cypher.txt written - import with: cypher-shell < graphify-out/cypher.txt'
 **If `--neo4j-push <uri>`** - push directly to a running Neo4j instance. Ask the user for credentials if not provided:
 
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import sys, json
 from graphify.build import build_from_json
 from graphify.cluster import cluster
@@ -525,7 +626,7 @@ Replace `NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD` with actual values. Default 
 ### Step 7b - SVG export (only if --svg flag)
 
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import sys, json
 from graphify.build import build_from_json
 from graphify.export import to_svg
@@ -547,7 +648,7 @@ print('graph.svg written - embeds in Obsidian, Notion, GitHub READMEs')
 ### Step 7c - GraphML export (only if --graphml flag)
 
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import json
 from graphify.build import build_from_json
 from graphify.export import to_graphml
@@ -589,7 +690,7 @@ To configure in Claude Desktop, add to `claude_desktop_config.json`:
 If `total_words` from `.graphify_detect.json` is greater than 5,000, run:
 
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import json
 from graphify.benchmark import run_benchmark, print_benchmark
 from pathlib import Path
@@ -607,7 +708,7 @@ Print the output directly in chat. If `total_words <= 5000`, skip silently - the
 ### Step 9 - Save manifest, update cost tracker, clean up, and report
 
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import json
 from pathlib import Path
 from datetime import datetime, timezone
@@ -681,7 +782,7 @@ The graph is the map. Your job after the pipeline is to be the guide.
 Use when you've added or modified files since the last run. Only re-extracts changed files - saves tokens and time.
 
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import sys, json
 from graphify.detect import detect_incremental, save_manifest
 from pathlib import Path
@@ -690,17 +791,21 @@ result = detect_incremental(Path('INPUT_PATH'))
 new_total = result.get('new_total', 0)
 print(json.dumps(result, indent=2))
 Path('.graphify_incremental.json').write_text(json.dumps(result))
-if new_total == 0:
+deleted = list(result.get('deleted_files', []))
+if new_total == 0 and not deleted:
     print('No files changed since last run. Nothing to update.')
     raise SystemExit(0)
-print(f'{new_total} new/changed file(s) to re-extract.')
+if deleted:
+    print(f'{len(deleted)} deleted file(s) to prune.')
+if new_total > 0:
+    print(f'{new_total} new/changed file(s) to re-extract.')
 "
 ```
 
 If new files exist, first check whether all changed files are code files:
 
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import json
 from pathlib import Path
 
@@ -717,10 +822,25 @@ If `code_only` is True: print `[graphify update] Code-only changes detected - sk
 
 If `code_only` is False (any changed file is a doc/paper/image): run the full Steps 3A–3C pipeline as normal.
 
+
+If no new files exist (only deletions), create an empty extraction so the merge step can prune:
+
+```bash
+if [ ! -f graphify-out/.graphify_extract.json ]; then
+    echo '[graphify update] Only deletions -- creating empty extraction for merge.'
+    $(cat graphify-out/.graphify_python) -c "
+import json
+from pathlib import Path
+Path('graphify-out/.graphify_extract.json').write_text(json.dumps({'nodes':[],'edges':[],'hyperedges':[],'input_tokens':0,'output_tokens':0}), encoding='utf-8')
+"
+fi
+```
+
+
 Then:
 
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import sys, json
 from graphify.build import build_from_json
 from graphify.export import to_json
@@ -747,7 +867,7 @@ Then run Steps 4–8 on the merged graph as normal.
 After Step 4, show the graph diff:
 
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import json
 from graphify.analyze import graph_diff
 from graphify.build import build_from_json
@@ -781,7 +901,7 @@ Clean up after: `rm -f .graphify_old.json`
 Skip Steps 1–3. Load the existing graph from `graphify-out/graph.json` and re-run clustering:
 
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import sys, json
 from graphify.cluster import cluster, score_all
 from graphify.analyze import god_nodes, surprising_connections
@@ -834,7 +954,7 @@ Two traversal modes - choose based on the question:
 
 First check the graph exists:
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 from pathlib import Path
 if not Path('graphify-out/graph.json').exists():
     print('ERROR: No graph found. Run /graphify <path> first to build the graph.')
@@ -852,7 +972,7 @@ Load `graphify-out/graph.json`, then:
 5. If the graph lacks enough information, say so - do not hallucinate edges.
 
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import sys, json
 from networkx.readwrite import json_graph
 import networkx as nx
@@ -928,7 +1048,7 @@ for nid in ranked_nodes:
     lines.append(f'  NODE {d.get(\"label\", nid)} [src={d.get(\"source_file\",\"\")} loc={d.get(\"source_location\",\"\")}]')
 for u, v in subgraph_edges:
     if u in subgraph_nodes and v in subgraph_nodes:
-        d = G.edges[u, v]
+        _raw = G[u][v]; d = next(iter(_raw.values()), {}) if isinstance(G, nx.MultiGraph) else _raw
         lines.append(f'  EDGE {G.nodes[u].get(\"label\",u)} --{d.get(\"relation\",\"\")} [{d.get(\"confidence\",\"\")}]--> {G.nodes[v].get(\"label\",v)}')
 
 output = '\n'.join(lines)
@@ -943,7 +1063,7 @@ Replace `QUESTION` with the user's actual question, `MODE` with `bfs` or `dfs`, 
 After writing the answer, save it back into the graph so it improves future queries:
 
 ```bash
-$(cat .graphify_python) -m graphify save-result --question "QUESTION" --answer "ANSWER" --type query --nodes NODE1 NODE2
+$(cat graphify-out/.graphify_python) -m graphify save-result --question "QUESTION" --answer "ANSWER" --type query --nodes NODE1 NODE2
 ```
 
 Replace `QUESTION` with the question, `ANSWER` with your full answer text, `SOURCE_NODES` with the list of node labels you cited. This closes the feedback loop: the next `--update` will extract this Q&A as a node in the graph.
@@ -956,7 +1076,7 @@ Find the shortest path between two named concepts in the graph.
 
 First check the graph exists:
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 from pathlib import Path
 if not Path('graphify-out/graph.json').exists():
     print('ERROR: No graph found. Run /graphify <path> first to build the graph.')
@@ -966,7 +1086,7 @@ if not Path('graphify-out/graph.json').exists():
 If it fails, stop and tell the user to run `/graphify <path>` first.
 
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import json, sys
 import networkx as nx
 from networkx.readwrite import json_graph
@@ -1000,7 +1120,7 @@ try:
     for i, nid in enumerate(path):
         label = G.nodes[nid].get('label', nid)
         if i < len(path) - 1:
-            edge = G.edges[nid, path[i+1]]
+            _raw = G[nid][path[i+1]]; edge = next(iter(_raw.values()), {}) if isinstance(G, nx.MultiGraph) else _raw
             rel = edge.get('relation', '')
             conf = edge.get('confidence', '')
             print(f'  {label} --{rel}--> [{conf}]')
@@ -1018,7 +1138,7 @@ Replace `NODE_A` and `NODE_B` with the actual concept names from the user. Then 
 After writing the explanation, save it back:
 
 ```bash
-$(cat .graphify_python) -m graphify save-result --question "Path from NODE_A to NODE_B" --answer "ANSWER" --type path_query --nodes NODE_A NODE_B
+$(cat graphify-out/.graphify_python) -m graphify save-result --question "Path from NODE_A to NODE_B" --answer "ANSWER" --type path_query --nodes NODE_A NODE_B
 ```
 
 ---
@@ -1029,7 +1149,7 @@ Give a plain-language explanation of a single node - everything connected to it.
 
 First check the graph exists:
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 from pathlib import Path
 if not Path('graphify-out/graph.json').exists():
     print('ERROR: No graph found. Run /graphify <path> first to build the graph.')
@@ -1039,7 +1159,7 @@ if not Path('graphify-out/graph.json').exists():
 If it fails, stop and tell the user to run `/graphify <path>` first.
 
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import json, sys
 import networkx as nx
 from networkx.readwrite import json_graph
@@ -1070,7 +1190,7 @@ print(f'  degree: {G.degree(nid)}')
 print()
 print('CONNECTIONS:')
 for neighbor in G.neighbors(nid):
-    edge = G.edges[nid, neighbor]
+    _raw = G[nid][neighbor]; edge = next(iter(_raw.values()), {}) if isinstance(G, nx.MultiGraph) else _raw
     nlabel = G.nodes[neighbor].get('label', neighbor)
     rel = edge.get('relation', '')
     conf = edge.get('confidence', '')
@@ -1084,7 +1204,7 @@ Replace `NODE_NAME` with the concept the user asked about. Then write a 3-5 sent
 After writing the explanation, save it back:
 
 ```bash
-$(cat .graphify_python) -m graphify save-result --question "Explain NODE_NAME" --answer "ANSWER" --type explain --nodes NODE_NAME
+$(cat graphify-out/.graphify_python) -m graphify save-result --question "Explain NODE_NAME" --answer "ANSWER" --type explain --nodes NODE_NAME
 ```
 
 ---
@@ -1094,7 +1214,7 @@ $(cat .graphify_python) -m graphify save-result --question "Explain NODE_NAME" -
 Fetch a URL and add it to the corpus, then update the graph.
 
 ```bash
-$(cat .graphify_python) -c "
+$(cat graphify-out/.graphify_python) -c "
 import sys
 from graphify.ingest import ingest
 from pathlib import Path
@@ -1174,6 +1294,36 @@ graphify claude uninstall  # remove the section
 ```
 
 ---
+
+## Integration Commands (upgrade skill + register with AI platforms)
+
+After upgrading the package, re-register with each platform to sync the latest SKILL.md:
+
+```bash
+# Upgrade the graphify binary
+pip install --upgrade graphifyy --break-system-packages
+
+# Register with each platform
+graphify install                        # Claude Code → ~/.claude/skills/graphify/
+graphify install --platform hermes     # Hermes Agent → ~/.hermes/skills/graphify/
+graphify install --platform claw       # OpenClaw → ~/.openclaw/skills/graphify/
+graphify install --platform gemini     # Gemini CLI
+graphify install --platform cursor     # Cursor → .cursorrules
+graphify install --platform codex      # Codex
+graphify install --platform aider      # Aider
+graphify vscode install                # VS Code Copilot Chat
+```
+
+What each command does:
+- **Claude Code**: writes `~/.claude/skills/graphify/SKILL.md` + registers in `~/.claude/CLAUDE.md`
+- **Hermes Agent**: writes `~/.hermes/skills/graphify/SKILL.md` + skill registry entry
+- **OpenClaw**: writes `~/.openclaw/skills/graphify/SKILL.md` (global skill dir). OpenClaw also reads `~/.openclaw/workspace/AGENTS.md` for project-level rules — run `graphify claw install` in a project dir to add those.
+- **Other platforms**: writes platform-specific integration files (`.cursorrules`, `AGENTS.md`, etc.)
+
+> **Note:** OpenClaw has two separate skill mechanisms:
+> 1. `~/.openclaw/skills/` — global skill registry (set by `graphify install --platform claw`)
+> 2. `~/.openclaw/workspace/skills/` — per-workspace skills (managed by `openclaw skills install`, NOT by graphify)
+> Do NOT confuse these. The workspace skills dir is for ClawHub packages installed via `openclaw skills install`, not for graphify integrations.
 
 ## Honesty Rules
 

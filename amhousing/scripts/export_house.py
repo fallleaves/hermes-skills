@@ -5,7 +5,7 @@ Usage: python3 export_house.py --house-id <id> [--format json|text]
 """
 import sqlite3, json, sys, argparse
 
-DB = "/home/jfeng/projects/amhousing/prisma/dev.db"
+DB = "/home/jfeng/projects/amhousing/prisma/amhousing.db"
 
 def get_db():
     con = sqlite3.connect(DB)

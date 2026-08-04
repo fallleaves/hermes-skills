@@ -3,7 +3,7 @@
 import sqlite3, json, sys
 from datetime import datetime, timezone
 
-DB = "/home/jfeng/projects/amhousing/prisma/dev.db"
+DB = "/home/jfeng/projects/amhousing/prisma/amhousing.db"
 
 def get_db():
     con = sqlite3.connect(DB)

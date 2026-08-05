@@ -24,14 +24,30 @@ def search(house_id, query):
 
 def scan_warranties(house_id):
     con = get_db(); alerts = []
-    six_months = (datetime.now() + timedelta(days=180)).strftime("%Y-%m-%d")
-    rows = con.execute("""SELECT rf.name, rf.type, rf.brand, rf.warrantyExpiry, r.name as room
+    six_months_ts = (datetime.now() + timedelta(days=180)).timestamp()
+    # M-A2/m-D3: warrantyExpiry is INTEGER Unix-ms since the backfill —
+    # comparing an INTEGER against a TEXT date literal is ALWAYS true in
+    # SQLite (storage-class ordering), which flagged EVERY fixture as
+    # expiring (even warranties valid until 2040). Normalize both sides to
+    # epoch seconds like cleanup_orphan_files.epoch_expr.
+    epoch_expr = (
+        "CASE WHEN typeof(rf.warrantyExpiry) = 'integer' "
+        "THEN rf.warrantyExpiry/1000.0 "
+        "ELSE (julianday(rf.warrantyExpiry)-2440587.5)*86400.0 END"
+    )
+    rows = con.execute(f"""SELECT rf.name, rf.type, rf.brand, rf.warrantyExpiry, r.name as room
         FROM RoomFixture rf JOIN Room r ON rf.roomId=r.id
-        WHERE r.houseId=? AND rf.warrantyExpiry IS NOT NULL AND rf.warrantyExpiry <= ?""",
-        (house_id, six_months)).fetchall()
+        WHERE r.houseId=? AND rf.warrantyExpiry IS NOT NULL AND {epoch_expr} <= ?""",
+        (house_id, six_months_ts)).fetchall()
     for r in rows:
         d = dict(r)
-        alerts.append({"item": f"{d['name']} ({d['brand']})", "room": d['room'], "expiry": d['warrantyExpiry']})
+        raw = d['warrantyExpiry']
+        # normalize the reported expiry to a readable date (INTEGER ms or TEXT)
+        if isinstance(raw, (int, float)):
+            expiry = datetime.fromtimestamp(raw / 1000.0).strftime("%Y-%m-%d")
+        else:
+            expiry = str(raw)[:10]
+        alerts.append({"item": f"{d['name']} ({d['brand']})", "room": d['room'], "expiry": expiry})
     con.close(); return alerts
 
 def main():

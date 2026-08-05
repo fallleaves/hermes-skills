@@ -10,14 +10,19 @@ def get_db():
     con.row_factory = sqlite3.Row
     return con
 
+def escape_like(q):
+    """r10-n2: a literal %/_/\\ in the agent's query acted as LIKE wildcards
+    and matched EVERY row — escape them (the app routes' n7-5 pattern)."""
+    return q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
 def search(house_id, query):
-    con = get_db(); q = f"%{query}%"; results = []
-    for table, cols in [("RoomFixture", "rf.name LIKE ? OR rf.brand LIKE ? OR rf.model LIKE ? OR rf.type LIKE ?"),
-                         ("RoomFurniture", "rf.name LIKE ? OR rf.brand LIKE ? OR rf.model LIKE ?")]:
+    con = get_db(); q = f"%{escape_like(query)}%"; results = []
+    for table, cols in [("RoomFixture", "rf.name LIKE ? ESCAPE '\\' OR rf.brand LIKE ? ESCAPE '\\' OR rf.model LIKE ? ESCAPE '\\' OR rf.type LIKE ? ESCAPE '\\'"),
+                         ("RoomFurniture", "rf.name LIKE ? ESCAPE '\\' OR rf.brand LIKE ? ESCAPE '\\' OR rf.model LIKE ? ESCAPE '\\'")]:
         rows = con.execute(f"SELECT rf.*, r.name as room FROM {table} rf JOIN Room r ON rf.roomId=r.id WHERE r.houseId=? AND ({cols}) LIMIT 20",
                           (house_id, q, q, q, q) if "type" in cols else (house_id, q, q, q)).fetchall()
         results.extend([dict(r) for r in rows])
-    rows = con.execute("SELECT * FROM HouseSystem WHERE houseId=? AND (name LIKE ? OR brand LIKE ?) LIMIT 10",
+    rows = con.execute("SELECT * FROM HouseSystem WHERE houseId=? AND (name LIKE ? ESCAPE '\\' OR brand LIKE ? ESCAPE '\\') LIMIT 10",
                        (house_id, q, q)).fetchall()
     results.extend([dict(r) for r in rows])
     con.close(); return results

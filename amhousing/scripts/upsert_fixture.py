@@ -11,11 +11,28 @@ def get_db():
     return con
 
 def now_iso():
-    return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.') + f"{datetime.now(timezone.utc).microsecond // 1000:03d}Z"
+    # m-C6: INTEGER Unix-ms — Prisma's native DateTime format (M-A2).
+    # TEXT ISO dates reintroduce mixed storage classes that break Prisma
+    # cursor comparisons and ordering on Prisma-read tables.
+    return int(datetime.now(timezone.utc).timestamp() * 1000)
 
 def cuid():
     import random, string
     return 'c' + ''.join(random.choices(string.ascii_letters + string.digits, k=24))
+
+def normalize_datetime(value):
+    """n-D6: DateTime params must land as INTEGER Unix-ms (M-A2) — a TEXT
+    ISO value from the agent would reintroduce mixed storage classes on
+    Prisma-read columns (breaking ordering/pagination, the original
+    M-A2 bug class). Integers pass through; ISO-8601 strings convert."""
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, str):
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return int(dt.timestamp() * 1000)
+    return None
 
 def upsert(room_id, fixture_type, name, category=None, brand=None, model=None,
            serial_number=None, material=None, color=None, dimensions=None,
@@ -23,6 +40,7 @@ def upsert(room_id, fixture_type, name, category=None, brand=None, model=None,
            warranty_expiry=None, condition=None, notes=None, images=None,
            confidence=None):
     """Find existing fixture or create new. Returns (action, fixture_dict)."""
+    warranty_expiry = normalize_datetime(warranty_expiry)
     con = get_db()
     
     # Look for existing fixture of same type in same room
@@ -35,13 +53,23 @@ def upsert(room_id, fixture_type, name, category=None, brand=None, model=None,
         old = dict(existing)
         # Update
         updates = {}
+        # m4: purchasePrice/supplier/warrantyExpiry were missing here — the
+        # agent's price/warranty edits were reported as 'updated' but never
+        # landed on existing fixtures
         for field in ['brand', 'model', 'serialNumber', 'material', 'color',
-                       'dimensions', 'mountSpecs', 'condition', 'notes', 'images']:
+                       'dimensions', 'mountSpecs', 'condition', 'notes', 'images',
+                       'purchasePrice', 'supplier', 'warrantyExpiry']:
             val = locals().get(field.replace('serialNumber', 'serial_number')
                                .replace('mountSpecs', 'mount_specs'))
             if val is not None:
+                # n7-2: sqlite3 cannot bind a list/dict — serialize objects
+                if isinstance(val, (list, dict)):
+                    val = json.dumps(val, ensure_ascii=False)
                 updates[field] = val
         if updates:
+            # n7-1: raw SQL bypasses Prisma's @updatedAt — keep the column
+            # honest for agent-touched rows
+            updates['updatedAt'] = now_iso()
             updates['previousState'] = json.dumps(old, default=str)
             set_clause = ", ".join(f"{k} = ?" for k in updates)
             con.execute(
@@ -65,14 +93,18 @@ def upsert(room_id, fixture_type, name, category=None, brand=None, model=None,
         # Create new
         fid = cuid()
         ts = now_iso()
+        # n7-2: serialize list/dict values (images, mountSpecs, notes, ...)
+        # before binding — sqlite3 raises InterfaceError otherwise
+        def _bind(v):
+            return json.dumps(v, ensure_ascii=False) if isinstance(v, (list, dict)) else v
         con.execute("""
             INSERT INTO RoomFixture (id, roomId, category, type, name, brand, model,
                 serialNumber, material, color, dimensions, mountSpecs, condition,
                 notes, images, purchasePrice, supplier, warrantyExpiry, createdAt, updatedAt)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (fid, room_id, category or "unknown", fixture_type, name or fixture_type,
-              brand, model, serial_number, material, color, dimensions,
-              mount_specs, condition, notes, images,
+              brand, model, serial_number, _bind(material), _bind(color), _bind(dimensions),
+              _bind(mount_specs), condition, _bind(notes), _bind(images),
               purchase_price, supplier, warranty_expiry, ts, ts))
         # Create initial version
         con.execute(

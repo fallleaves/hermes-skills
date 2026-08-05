@@ -53,8 +53,10 @@ def get_db():
 
 
 def now_iso():
-    now = datetime.now(timezone.utc)
-    return now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z"
+    # m-C6: INTEGER Unix-ms — Prisma's native DateTime format (M-A2).
+    # TEXT ISO dates reintroduce mixed storage classes that break Prisma
+    # cursor comparisons and ordering on Prisma-read tables.
+    return int(datetime.now(timezone.utc).timestamp() * 1000)
 
 
 def cuid():
@@ -133,7 +135,15 @@ def main():
             ).fetchone()
         else:
             # Generic fallback: verify the target exists (relation checks are
-            # model-specific; RoomFixture is the only currently supported target)
+            # model-specific; RoomFixture is the only currently supported target).
+            # m7-5: NEVER splice an agent-supplied model name into SQL — the
+            # whitelist keeps the interpolation safe even if a future caller
+            # passes a crafted value.
+            TARGET_MODEL_WHITELIST = ("RoomFixture", "RoomFurniture", "HouseSystem", "Item", "House")
+            if args.target_model not in TARGET_MODEL_WHITELIST:
+                con.close()
+                print(json.dumps({"ok": False, "error": f"unsupported target model {args.target_model!r}"}))
+                sys.exit(1)
             try:
                 row = con.execute(
                     f"SELECT id FROM {args.target_model} WHERE id = ?",

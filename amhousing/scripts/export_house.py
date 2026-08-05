@@ -16,7 +16,12 @@ def export(house_id):
     con = get_db()
     
     # House basic info
-    house = dict(con.execute("SELECT * FROM House WHERE id = ?", (house_id,)).fetchone())
+    row = con.execute("SELECT * FROM House WHERE id = ?", (house_id,)).fetchone()
+    if row is None:
+        # m5: a nonexistent house-id used to crash with dict(None) — a
+        # clean error is far more useful for the agent
+        return {"error": f"House {house_id} not found"}
+    house = dict(row)
     del house['images']
     del house['ownerId']
     
@@ -107,6 +112,10 @@ def main():
     args = p.parse_args()
     
     data = export(args.house_id)
+    if isinstance(data, dict) and "error" in data:
+        # m5: one clean JSON document for the agent
+        json.dump(data, sys.stdout, ensure_ascii=False)
+        return
     
     if args.format == "text":
         print(format_text(data))

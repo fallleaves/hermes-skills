@@ -56,11 +56,20 @@ def upsert(room_id, fixture_type, name, category=None, brand=None, model=None,
         # m4: purchasePrice/supplier/warrantyExpiry were missing here — the
         # agent's price/warranty edits were reported as 'updated' but never
         # landed on existing fixtures
+        # M1: the camelCase DB field names are looked up in locals(), but
+        # the Python params are snake_case — purchasePrice/warrantyExpiry
+        # resolved to None and those edits were STILL silently dropped
+        # (only supplier landed). Map every non-identical field explicitly.
+        FIELD_TO_PARAM = {
+            'serialNumber': 'serial_number',
+            'mountSpecs': 'mount_specs',
+            'purchasePrice': 'purchase_price',
+            'warrantyExpiry': 'warranty_expiry',
+        }
         for field in ['brand', 'model', 'serialNumber', 'material', 'color',
                        'dimensions', 'mountSpecs', 'condition', 'notes', 'images',
                        'purchasePrice', 'supplier', 'warrantyExpiry']:
-            val = locals().get(field.replace('serialNumber', 'serial_number')
-                               .replace('mountSpecs', 'mount_specs'))
+            val = locals().get(FIELD_TO_PARAM.get(field, field))
             if val is not None:
                 # n7-2: sqlite3 cannot bind a list/dict — serialize objects
                 if isinstance(val, (list, dict)):

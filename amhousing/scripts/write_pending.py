@@ -90,8 +90,11 @@ def main():
     parser.add_argument("--house-id", required=True)
     parser.add_argument("--target-model", required=True,
                         help="RoomFixture | RoomFurniture | HouseSystem | Item | House | ...")
-    parser.add_argument("--target-id", default=None,
-                        help="ID of the existing record this proposal modifies (omit for new records)")
+    parser.add_argument("--target-id", required=True,
+                        help="ID of the existing record this proposal modifies "
+                             "(REQUIRED — the approval flow can only APPLY updates to an "
+                             "existing record; a proposal without a target-id can never be "
+                             "approved, only rejected)")
     parser.add_argument("--confidence", required=True, type=float,
                         help="Agent confidence in the proposal (0.0-1.0)")
     parser.add_argument("--proposed-data", required=True,

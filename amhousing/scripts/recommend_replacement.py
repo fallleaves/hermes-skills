@@ -12,10 +12,15 @@ def get_db():
     con.row_factory = sqlite3.Row
     return con
 
+def escape_like(q):
+    """r10-n2: a literal %/_/\\ in the agent's query acted as LIKE wildcards
+    and matched EVERY row — escape them (the app routes' n7-5 pattern)."""
+    return q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
 def find_fixture(house_id, query):
     """Find a fixture by search terms and return its full specs + room context."""
     con = get_db()
-    q = f"%{query}%"
+    q = f"%{escape_like(query)}%"
     row = con.execute("""
         SELECT rf.*, r.name as room_name, r.type as room_type,
                r.doorThickness, r.doorWidth, r.doorHeight, r.doorOpening,
@@ -23,7 +28,7 @@ def find_fixture(house_id, query):
                r.floorType, r.hasFloorHeating
         FROM RoomFixture rf
         JOIN Room r ON rf.roomId = r.id
-        WHERE r.houseId = ? AND (rf.name LIKE ? OR rf.type LIKE ? OR rf.brand LIKE ? OR rf.model LIKE ?)
+        WHERE r.houseId = ? AND (rf.name LIKE ? ESCAPE '\\' OR rf.type LIKE ? ESCAPE '\\' OR rf.brand LIKE ? ESCAPE '\\' OR rf.model LIKE ? ESCAPE '\\')
         ORDER BY rf.roomId
         LIMIT 5
     """, (house_id, q, q, q, q)).fetchall()
@@ -31,20 +36,20 @@ def find_fixture(house_id, query):
     return [dict(r) for r in row]
 
 def find_furniture(house_id, query):
-    con = get_db(); q = f"%{query}%"
+    con = get_db(); q = f"%{escape_like(query)}%"
     rows = con.execute("""
         SELECT rf.*, r.name as room_name FROM RoomFurniture rf
         JOIN Room r ON rf.roomId = r.id
-        WHERE r.houseId = ? AND (rf.name LIKE ? OR rf.brand LIKE ?)
+        WHERE r.houseId = ? AND (rf.name LIKE ? ESCAPE '\\' OR rf.brand LIKE ? ESCAPE '\\')
         LIMIT 5
     """, (house_id, q, q)).fetchall()
     con.close(); return [dict(r) for r in rows]
 
 def find_system(house_id, query):
-    con = get_db(); q = f"%{query}%"
+    con = get_db(); q = f"%{escape_like(query)}%"
     rows = con.execute("""
         SELECT * FROM HouseSystem
-        WHERE houseId = ? AND (name LIKE ? OR brand LIKE ? OR type LIKE ?)
+        WHERE houseId = ? AND (name LIKE ? ESCAPE '\\' OR brand LIKE ? ESCAPE '\\' OR type LIKE ? ESCAPE '\\')
         LIMIT 5
     """, (house_id, q, q, q)).fetchall()
     con.close(); return [dict(r) for r in rows]

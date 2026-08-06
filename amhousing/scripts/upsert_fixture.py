@@ -79,6 +79,24 @@ def normalize_datetime(value):
         return None
     return None
 
+def normalize_purchase_price(value):
+    """r26-n2: purchasePrice is a Prisma 32-bit Int column — a float,
+    numeric string or oversized int bound raw would silently drift the
+    column to REAL/TEXT/overflow (SQLite dynamic typing). Accept only
+    in-range integers (int, or integer-valued finite floats); anything
+    else — fractions, strings, bools, out-of-range — degrades to None,
+    honoring the graceful-degradation contract."""
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if 0 <= value <= 2**31 - 1 else None
+    if isinstance(value, float):
+        if not math.isfinite(value) or not value.is_integer():
+            return None
+        return int(value) if 0 <= value <= 2**31 - 1 else None
+    return None  # strings and anything else are rejected
+
+
 def upsert(room_id, fixture_type, name, category=None, brand=None, model=None,
            serial_number=None, material=None, color=None, dimensions=None,
            mount_specs=None, purchase_price=None, supplier=None,
@@ -86,6 +104,7 @@ def upsert(room_id, fixture_type, name, category=None, brand=None, model=None,
            confidence=None):
     """Find existing fixture or create new. Returns (action, fixture_dict)."""
     warranty_expiry = normalize_datetime(warranty_expiry)
+    purchase_price = normalize_purchase_price(purchase_price)
     con = get_db()
     
     # Look for existing fixture of same type in same room

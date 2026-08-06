@@ -97,15 +97,22 @@ def upsert(room_id, fixture_type, name, category=None, brand=None, model=None,
             'purchasePrice': 'purchase_price',
             'warrantyExpiry': 'warranty_expiry',
         }
-        for field in ['brand', 'model', 'serialNumber', 'material', 'color',
+        for field in ['name', 'brand', 'model', 'serialNumber', 'material', 'color',
                        'dimensions', 'mountSpecs', 'condition', 'notes', 'images',
                        'purchasePrice', 'supplier', 'warrantyExpiry']:
             val = locals().get(FIELD_TO_PARAM.get(field, field))
-            if val is not None:
-                # n7-2: sqlite3 cannot bind a list/dict — serialize objects
-                if isinstance(val, (list, dict)):
-                    val = json.dumps(val, ensure_ascii=False)
-                updates[field] = val
+            if val is None:
+                continue
+            # n7-2: sqlite3 cannot bind a list/dict — serialize objects
+            if isinstance(val, (list, dict)):
+                val = json.dumps(val, ensure_ascii=False)
+            # r20-m2: only write fields that actually CHANGED. `name` is a
+            # REQUIRED upsert() param, so adding it to the loop without
+            # this check made every call (even a true no-op) report
+            # "updated" — the honest "unchanged" path must survive.
+            if old.get(field) == val:
+                continue
+            updates[field] = val
         if updates:
             # n7-1: raw SQL bypasses Prisma's @updatedAt — keep the column
             # honest for agent-touched rows

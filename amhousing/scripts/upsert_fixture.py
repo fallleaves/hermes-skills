@@ -24,14 +24,38 @@ def normalize_datetime(value):
     """n-D6: DateTime params must land as INTEGER Unix-ms (M-A2) — a TEXT
     ISO value from the agent would reintroduce mixed storage classes on
     Prisma-read columns (breaking ordering/pagination, the original
-    M-A2 bug class). Integers pass through; ISO-8601 strings convert."""
+    M-A2 bug class). Integers pass through; ISO-8601 strings convert.
+    r18-n1: unparseable strings return None instead of crashing the whole
+    upsert with a ValueError traceback (plausible LLM outputs like
+    'January 15, 2026'), mirroring maintenance_scan.parse_dt's graceful
+    degradation."""
     if value is None:
+        return None
+    if isinstance(value, bool):
+        # r18-n1: bool is an int subclass — True would become 1ms
+        # (1970-01-01T00:00:00.001), a garbage warranty date
         return None
     if isinstance(value, (int, float)):
         return int(value)
     if isinstance(value, str):
-        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
-        return int(dt.timestamp() * 1000)
+        s = value.strip()
+        if not s:
+            return None
+        try:
+            dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+            return int(dt.timestamp() * 1000)
+        except ValueError:
+            pass
+        # r18-n1: parse_dt fallbacks — the DB's TEXT formats still
+        # convert; anything else degrades to None (clean no-op, never a
+        # traceback, and the agent still gets its JSON summary)
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+            try:
+                dt = datetime.strptime(s, fmt)
+                return int(dt.timestamp() * 1000)
+            except ValueError:
+                continue
+        return None
     return None
 
 def upsert(room_id, fixture_type, name, category=None, brand=None, model=None,

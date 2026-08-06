@@ -116,9 +116,15 @@ def upsert(room_id, fixture_type, name, category=None, brand=None, model=None,
               _bind(mount_specs), condition, _bind(notes), _bind(images),
               purchase_price, supplier, warranty_expiry, ts, ts))
         # Create initial version
+        # r11-n4: confidence was accepted but silently dropped — record it
+        # in the initial version snapshot so the caller's value lands
+        initial_snapshot = (
+            json.dumps({"confidence": confidence}, default=str)
+            if confidence is not None else "{}"
+        )
         con.execute(
-            "INSERT INTO RoomFixtureVersion (id, fixtureId, snapshot, source, createdAt) VALUES (?, ?, '{}', 'agent_extraction', ?)",
-            (cuid(), fid, ts)
+            "INSERT INTO RoomFixtureVersion (id, fixtureId, snapshot, source, createdAt) VALUES (?, ?, ?, 'agent_extraction', ?)",
+            (cuid(), fid, initial_snapshot, ts)
         )
         con.commit()
         new_fixture = dict(con.execute("SELECT * FROM RoomFixture WHERE id = ?", (fid,)).fetchone())

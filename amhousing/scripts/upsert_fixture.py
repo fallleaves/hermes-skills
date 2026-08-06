@@ -43,6 +43,11 @@ def normalize_datetime(value):
             return None
         try:
             dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+            # r19-n1: a Z-less ISO string yields a NAIVE datetime, and
+            # timestamp() would interpret it in LOCAL time — the DB stores
+            # UTC ms, so bare strings mean UTC (parse_dt parity)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
             return int(dt.timestamp() * 1000)
         except ValueError:
             pass
@@ -52,6 +57,8 @@ def normalize_datetime(value):
         for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
             try:
                 dt = datetime.strptime(s, fmt)
+                # strptime always yields naive — same UTC contract
+                dt = dt.replace(tzinfo=timezone.utc)
                 return int(dt.timestamp() * 1000)
             except ValueError:
                 continue

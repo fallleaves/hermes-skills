@@ -65,7 +65,7 @@ def normalize_datetime(value):
             # UTC ms, so bare strings mean UTC (parse_dt parity)
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=timezone.utc)
-            return int(dt.timestamp() * 1000)
+            return _ms_or_none(int(dt.timestamp() * 1000))
         except ValueError:
             pass
         # r18-n1: parse_dt fallbacks — the DB's TEXT formats still
@@ -76,11 +76,20 @@ def normalize_datetime(value):
                 dt = datetime.strptime(s, fmt)
                 # strptime always yields naive — same UTC contract
                 dt = dt.replace(tzinfo=timezone.utc)
-                return int(dt.timestamp() * 1000)
+                return _ms_or_none(int(dt.timestamp() * 1000))
             except ValueError:
                 continue
         return None
     return None
+
+def _ms_or_none(ms):
+    """r30-n2: the r28-n3 range contract applied to CONVERTED values —
+    a pre-1970 date string ('1950-01-01' → −631152000000) is the same
+    garbage class as a negative numeric timestamp: it binds and gets
+    flagged long-expired by the warranty scans."""
+    if not 0 <= ms <= 8_640_000_000_000_000:
+        return None
+    return ms
 
 def normalize_purchase_price(value):
     """r26-n2: purchasePrice is a Prisma 32-bit Int column — a float,

@@ -42,6 +42,14 @@ def normalize_datetime(value):
         # upsert with a traceback instead of the graceful-None contract
         if isinstance(value, float) and not math.isfinite(value):
             return None
+        # r26-m1: magnitude guard — a finite 1e30 passes int() but crashes
+        # the very next sqlite bind (OverflowError: Python int too large
+        # to convert to SQLite INTEGER), and bindable-but-absurd values
+        # (1e18 ms ≈ year 31M) crash the weekly cron readers
+        # (ValueError: year out of range). 8.64e15 ms ≈ year 275760 — a
+        # sane DateTime ceiling.
+        if abs(value) > 8_640_000_000_000_000:
+            return None
         return int(value)
     if isinstance(value, str):
         s = value.strip()

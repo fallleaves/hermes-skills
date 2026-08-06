@@ -48,8 +48,14 @@ def scan_warranties(house_id):
         d = dict(r)
         raw = d['warrantyExpiry']
         # normalize the reported expiry to a readable date (INTEGER ms or TEXT)
+        # r26-m1: an absurd stored ms value (1e18 ≈ year 31M) raised
+        # ValueError from fromtimestamp — degrade to the raw digits rather
+        # than taking down the agent's warranty query
         if isinstance(raw, (int, float)):
-            expiry = datetime.fromtimestamp(raw / 1000.0).strftime("%Y-%m-%d")
+            try:
+                expiry = datetime.fromtimestamp(raw / 1000.0).strftime("%Y-%m-%d")
+            except (ValueError, OverflowError, OSError):
+                expiry = str(raw)[:10]
         else:
             expiry = str(raw)[:10]
         alerts.append({"item": f"{d['name']} ({d['brand']})", "room": d['room'], "expiry": expiry})

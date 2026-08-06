@@ -87,9 +87,14 @@ def upsert(room_id, fixture_type, name, category=None, brand=None, model=None,
             )
             # Save version snapshot
             ts = now_iso()
+            # r12-n1: confidence on the UPDATE path was silently dropped —
+            # record it in the version snapshot like the create path
+            snapshot = json.dumps(old, default=str)
+            if confidence is not None:
+                snapshot = json.dumps({**old, "confidence": confidence}, default=str)
             con.execute(
                 "INSERT INTO RoomFixtureVersion (id, fixtureId, snapshot, source, createdAt) VALUES (?, ?, ?, 'agent_extraction', ?)",
-                (cuid(), old['id'], json.dumps(old, default=str), ts)
+                (cuid(), old['id'], snapshot, ts)
             )
             con.commit()
             updated = dict(con.execute("SELECT * FROM RoomFixture WHERE id = ?", (old['id'],)).fetchone())

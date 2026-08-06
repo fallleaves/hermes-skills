@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """upsert_fixture.py — Deduplicate and write RoomFixture with version tracking."""
-import sqlite3, json, sys
+import sqlite3, json, sys, math
 from datetime import datetime, timezone
 
 DB = "/home/jfeng/projects/amhousing/prisma/amhousing.db"
@@ -36,6 +36,12 @@ def normalize_datetime(value):
         # (1970-01-01T00:00:00.001), a garbage warranty date
         return None
     if isinstance(value, (int, float)):
+        # r25-n2: NaN/±Infinity floats reach this branch from crafted
+        # stdin (json.loads accepts the NaN/Infinity literals) — int(NaN)
+        # raises ValueError and int(inf) OverflowError, crashing the whole
+        # upsert with a traceback instead of the graceful-None contract
+        if isinstance(value, float) and not math.isfinite(value):
+            return None
         return int(value)
     if isinstance(value, str):
         s = value.strip()

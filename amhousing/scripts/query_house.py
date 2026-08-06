@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """query_house.py — Query AM Housing DB."""
 import sqlite3, json, sys, argparse
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 DB = "/home/jfeng/projects/amhousing/prisma/amhousing.db"
 
@@ -29,7 +29,11 @@ def search(house_id, query):
 
 def scan_warranties(house_id):
     con = get_db(); alerts = []
-    six_months_ts = (datetime.now() + timedelta(days=180)).timestamp()
+    # r43-n1: the warranty epochs are UTC-normalized (epoch_expr below) —
+    # the comparison side must be aware-UTC too; a naive-local now()
+    # diverges by the UTC offset on any non-UTC host (r19-n1 class; every
+    # sibling script uses datetime.now(timezone.utc))
+    six_months_ts = (datetime.now(timezone.utc) + timedelta(days=180)).timestamp()
     # M-A2/m-D3: warrantyExpiry is INTEGER Unix-ms since the backfill —
     # comparing an INTEGER against a TEXT date literal is ALWAYS true in
     # SQLite (storage-class ordering), which flagged EVERY fixture as

@@ -218,8 +218,11 @@ def main():
         if not isinstance(data, dict):
             raise ValueError("stdin must be a JSON object of upsert() kwargs")
         result = upsert(**data)
-        json.dump({"action": result[0], "fixture": result[1]}, sys.stdout,
-                  ensure_ascii=False, indent=2, default=str)
+        # r27-n2: the success path carries ok: true — the r26-n1 error
+        # shape ({"ok": false, ...}) made a caller that gates on
+        # payload.get("ok") misread every success as a failure
+        json.dump({"ok": True, "action": result[0], "fixture": result[1]},
+                  sys.stdout, ensure_ascii=False, indent=2, default=str)
     except Exception as e:
         json.dump({"ok": False, "error": str(e)}, sys.stdout)
         sys.exit(1)

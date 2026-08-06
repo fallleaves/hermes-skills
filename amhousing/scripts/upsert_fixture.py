@@ -188,7 +188,22 @@ def upsert(room_id, fixture_type, name, category=None, brand=None, model=None,
         con.close()
         return ("created", new_fixture)
 
+def main():
+    # r26-n1: the stdin entrypoint must never die with a raw traceback —
+    # unknown kwargs (TypeError), empty/non-JSON stdin (EOFError/
+    # JSONDecodeError) and array stdin (TypeError) all exit cleanly with
+    # a structured JSON error, honoring the r18-n1 graceful contract
+    # (the argparse siblings already do this).
+    try:
+        data = json.load(sys.stdin)
+        if not isinstance(data, dict):
+            raise ValueError("stdin must be a JSON object of upsert() kwargs")
+        result = upsert(**data)
+        json.dump({"action": result[0], "fixture": result[1]}, sys.stdout,
+                  ensure_ascii=False, indent=2, default=str)
+    except Exception as e:
+        json.dump({"ok": False, "error": str(e)}, sys.stdout)
+        sys.exit(1)
+
 if __name__ == "__main__":
-    data = json.load(sys.stdin)
-    result = upsert(**data)
-    json.dump({"action": result[0], "fixture": result[1]}, sys.stdout, ensure_ascii=False, indent=2, default=str)
+    main()

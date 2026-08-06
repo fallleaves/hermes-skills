@@ -130,7 +130,7 @@ def upsert(room_id, fixture_type, name, category=None, brand=None, model=None,
             'purchasePrice': 'purchase_price',
             'warrantyExpiry': 'warranty_expiry',
         }
-        for field in ['name', 'brand', 'model', 'serialNumber', 'material', 'color',
+        for field in ['name', 'category', 'brand', 'model', 'serialNumber', 'material', 'color',
                        'dimensions', 'mountSpecs', 'condition', 'notes', 'images',
                        'purchasePrice', 'supplier', 'warrantyExpiry']:
             val = locals().get(FIELD_TO_PARAM.get(field, field))

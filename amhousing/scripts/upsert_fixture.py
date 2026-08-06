@@ -48,7 +48,10 @@ def normalize_datetime(value):
         # (1e18 ms ≈ year 31M) crash the weekly cron readers
         # (ValueError: year out of range). 8.64e15 ms ≈ year 275760 — a
         # sane DateTime ceiling.
-        if abs(value) > 8_640_000_000_000_000:
+        # r28-n3: the negative end is garbage too — a pre-1970 warranty/
+        # purchase date is always a mistake (LLM-computed epochs), and
+        # it gets flagged long-expired by the warranty scans
+        if not 0 <= value <= 8_640_000_000_000_000:
             return None
         return int(value)
     if isinstance(value, str):

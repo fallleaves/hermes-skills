@@ -106,6 +106,15 @@ def main():
     parser.add_argument("--source-event-id", default=None)
     args = parser.parse_args()
 
+    # r17-n1: argparse's required=True only guarantees PRESENCE — an empty
+    # string is a valid value. The falsy verification gate below would skip
+    # the target-existence check and the INSERT would park a pending row
+    # with targetId="" that the approval flow can never APPLY (it can only
+    # update an existing record) — permanently stuck in the owner's queue.
+    if args.target_id == "":
+        print(json.dumps({"ok": False, "error": "target-id must not be empty"}))
+        sys.exit(1)
+
     # Validate proposed-data is a JSON object
     try:
         parsed = json.loads(args.proposed_data)

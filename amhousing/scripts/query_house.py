@@ -1,11 +1,20 @@
 #!/usr/bin/env python3
 """query_house.py — Query AM Housing DB."""
+import os
+import sys
 import sqlite3, json, sys, argparse
 from datetime import datetime, timedelta, timezone
 
 DB = "/home/jfeng/projects/amhousing/prisma/amhousing.db"
 
 def get_db():
+    # r76-n4: F-037 parity (process_message.py) — a missing/0-byte path must
+    # refuse; sqlite3.connect would CREATE a phantom empty DB and the script
+    # would die with a raw "no such table" traceback (or a misleading
+    # "not found"), and the phantom would shadow the real DB for later runs
+    if not os.path.exists(DB) or os.path.getsize(DB) == 0:
+        print(f"[{__file__.split('/')[-1]}] refusing to open missing/0-byte database: {DB}", file=sys.stderr)
+        sys.exit(1)
     con = sqlite3.connect(DB)
     con.row_factory = sqlite3.Row
     return con

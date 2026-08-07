@@ -57,7 +57,10 @@ def scan_warranties(house_id):
         # than taking down the agent's warranty query
         if isinstance(raw, (int, float)):
             try:
-                expiry = datetime.fromtimestamp(raw / 1000.0).strftime("%Y-%m-%d")
+                # r49-n1: aware-UTC display — naive-local fromtimestamp
+                # prints the LOCAL calendar date of a UTC instant (r43-n1
+                # fixed the scan boundary; the epoch_expr side is UTC)
+                expiry = datetime.fromtimestamp(raw / 1000.0, tz=timezone.utc).strftime("%Y-%m-%d")
             except (ValueError, OverflowError, OSError):
                 expiry = str(raw)[:10]
         else:

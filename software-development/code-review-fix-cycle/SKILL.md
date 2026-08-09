@@ -1,7 +1,7 @@
 ---
 name: code-review-fix-cycle
 description: "Sub-agent review + TDD fix cycles, repeated until clean."
-version: 2.0.0
+version: 2.1.0
 author: Hermes Agent
 license: MIT
 metadata:
@@ -48,9 +48,10 @@ report.
   bake the safe invocation into every prompt.
 - `HEAD` — `git -C "$REPO" log -1 --format=%H`.
 - `NOTES_FILE` — review sub-agent's working-notes file, default
-  `$REVIEWS_DIR/agents.md` (≤ 5 KB), untracked (never committed).
-  Cross-round wisdom channel: add insights that help future reviews, remove
-  obsolete entries. Optional — its absence never blocks a review.
+  `$REVIEWS_DIR/agents.md` (≤ 5 KB), committed with the round like the
+  report. Cross-round wisdom channel: add insights that help future
+  reviews, remove obsolete entries. Optional — its absence never blocks
+  a review.
 
 ## Round loop (main agent)
 
@@ -131,17 +132,16 @@ report.
      fixer never modifies the file): finding id → fixed / skipped / deferred
      → commit hash (or reason). This makes "do NOT re-report verified fixes"
      mechanically actionable for the next round.
-   - Commit round-<N>.md on the SAME branch the fixer committed to (stage
-     ONLY round-<N>.md — never agents.md, which is untracked by design) as a
-     docs commit. Record the deferred list for the next review prompt.
+   - Commit round-<N>.md (and agents.md if the reviewer created/updated it
+     this round) on the SAME branch the fixer committed to as docs commits.
+     Record the deferred list for the next review prompt.
    - Summarize the round (findings count, commits, fixer-reported test state
      — unverified by the main agent; the next round's review confirms).
 
-4. **Repeat** with fresh-context sub-agents. **STOP** when a round returns
-   zero findings, or when a round's findings are all NITs, or all duplicates
-   of already-fixed findings — state "the loop is converged" and stop. Hard
-   cap: if rounds exceed 10 since the last zero-findings round, stop and
-   report to the user.
+4. **Repeat** with fresh-context sub-agents. **STOP when a round returns
+   zero findings** — state it explicitly and stop. There is NO round cap:
+   as long as the review sub-agent keeps finding real issues, keep the loop
+   going.
 
 ## Pitfalls
 
@@ -152,7 +152,7 @@ report.
 - Real numbers only: report actual test/typecheck output, never fabricated
   counts; never report a run you did not complete.
 - Stage only intended files — never commit build artifacts, logs, or
-  untracked junk; agents.md stays untracked.
+  untracked junk; agents.md is committed with the round like the report.
 - Keep the review sub-agent read-only except the two allowed files (the
   round report and NOTES_FILE); any other write invalidates the round's
   independence. NOTES_FILE is bounded at 5 KB — run `wc -c` after any write,

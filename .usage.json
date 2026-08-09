@@ -17,13 +17,15 @@
     "created_at": "2026-07-26T22:38:08.842482+00:00",
     "created_by": null,
     "last_patched_at": "2026-08-02T17:02:29.922840+00:00",
-    "last_used_at": "2026-08-04T18:58:20.421072+00:00",
-    "last_viewed_at": "2026-08-04T17:10:29.424774+00:00",
+    "last_reused_patch_generation": 0,
+    "last_used_at": "2026-08-09T21:23:55.388486+00:00",
+    "last_viewed_at": "2026-08-09T21:23:55.386135+00:00",
     "patch_count": 9,
+    "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 4052,
-    "view_count": 22
+    "use_count": 5832,
+    "view_count": 102
   },
   "architecture-diagram": {
     "archived_at": null,
@@ -55,13 +57,15 @@
     "created_at": "2026-06-17T19:41:56.571081+00:00",
     "created_by": null,
     "last_patched_at": "2026-08-04T18:05:36.714463+00:00",
-    "last_used_at": "2026-08-04T17:10:29.426851+00:00",
-    "last_viewed_at": "2026-08-04T17:10:29.421890+00:00",
+    "last_reused_patch_generation": 0,
+    "last_used_at": "2026-08-07T00:23:37.018434+00:00",
+    "last_viewed_at": "2026-08-07T00:23:37.015757+00:00",
     "patch_count": 68,
+    "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 240,
-    "view_count": 155
+    "use_count": 252,
+    "view_count": 160
   },
   "autonomous-ai-agents/crash-recovery": {
     "archived_at": null,
@@ -180,6 +184,21 @@
     "use_count": 0,
     "view_count": 0
   },
+  "code-review-fix-cycle": {
+    "archived_at": null,
+    "created_at": "2026-08-09T21:45:45.976008+00:00",
+    "created_by": null,
+    "last_patched_at": "2026-08-09T21:45:54.434619+00:00",
+    "last_reused_patch_generation": 1,
+    "last_used_at": "2026-08-09T22:25:35.541269+00:00",
+    "last_viewed_at": "2026-08-09T22:25:35.536274+00:00",
+    "patch_count": 1,
+    "patch_generation": 1,
+    "pinned": false,
+    "state": "active",
+    "use_count": 3,
+    "view_count": 3
+  },
   "code-reviewer": {
     "archived_at": null,
     "created_at": "2026-07-11T07:25:42.838759+00:00",
@@ -245,6 +264,21 @@
     "use_count": 219,
     "view_count": 29
   },
+  "docx": {
+    "archived_at": null,
+    "created_at": "2026-08-06T21:25:38.688657+00:00",
+    "created_by": null,
+    "last_patched_at": null,
+    "last_reused_patch_generation": 0,
+    "last_used_at": "2026-08-06T21:25:38.693832+00:00",
+    "last_viewed_at": "2026-08-06T21:25:38.688675+00:00",
+    "patch_count": 0,
+    "patch_generation": 0,
+    "pinned": false,
+    "state": "active",
+    "use_count": 1,
+    "view_count": 1
+  },
   "github-code-review": {
     "created_at": "2026-06-15T19:43:12.601026+00:00",
     "created_by": null,
@@ -272,13 +306,15 @@
   "hermes-agent": {
     "created_at": "2026-06-17T16:49:27.665973+00:00",
     "created_by": null,
-    "last_used_at": "2026-08-03T11:24:05.260685+00:00",
-    "last_viewed_at": "2026-08-03T11:24:05.258233+00:00",
+    "last_reused_patch_generation": 0,
+    "last_used_at": "2026-08-09T20:34:45.172173+00:00",
+    "last_viewed_at": "2026-08-09T20:34:45.170002+00:00",
     "patch_count": 0,
+    "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 41,
-    "view_count": 41
+    "use_count": 54,
+    "view_count": 54
   },
   "hermes-agent-skill-authoring": {
     "archived_at": null,
@@ -407,6 +443,21 @@
     "state": "active",
     "use_count": 4,
     "view_count": 4
+  },
+  "ocr-and-documents": {
+    "archived_at": null,
+    "created_at": "2026-08-06T21:07:03.751761+00:00",
+    "created_by": null,
+    "last_patched_at": null,
+    "last_reused_patch_generation": 0,
+    "last_used_at": "2026-08-06T21:07:03.756763+00:00",
+    "last_viewed_at": "2026-08-06T21:07:03.752170+00:00",
+    "patch_count": 0,
+    "patch_generation": 0,
+    "pinned": false,
+    "state": "active",
+    "use_count": 1,
+    "view_count": 1
   },
   "ops-incident-response": {
     "created_at": "2026-06-14T20:17:11.529906+00:00",
@@ -635,12 +686,14 @@
     "created_at": "2026-06-19T18:13:29.438260+00:00",
     "created_by": null,
     "last_patched_at": null,
-    "last_used_at": "2026-08-03T19:26:48.134641+00:00",
-    "last_viewed_at": "2026-08-03T19:26:48.132344+00:00",
+    "last_reused_patch_generation": 0,
+    "last_used_at": "2026-08-09T22:25:38.517919+00:00",
+    "last_viewed_at": "2026-08-09T22:25:38.515184+00:00",
     "patch_count": 0,
+    "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 3,
-    "view_count": 3
+    "use_count": 8,
+    "view_count": 8
   }
 }

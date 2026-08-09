@@ -51,9 +51,7 @@ report.
   `$REVIEWS_DIR/review-notes.md` (≤ 5 KB), committed with the round like
   the report. Cross-round wisdom channel: add insights that help future
   reviews, remove obsolete entries. Optional — its absence never blocks
-  a review. NOTE: do NOT name it agents.md — that basename is protected
-  by Hermes (prompt-injection gate, always-ask approval) and a sub-agent
-  cannot write it.
+  a review.
 
 ## Round loop (main agent)
 

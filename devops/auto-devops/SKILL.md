@@ -30,7 +30,7 @@ No task context → point to `~/projects/auto-devops/`.
 - **User vs system**: `svc-*` checks use `systemctl --user`; system-level infra uses hand-written `sys-svc-<id>.sh` (plain `systemctl`) + `infra_services` entry with `type: system`.
 - **Backups**: the scaffold generates the wrapper — it runs the project's `scripts/backup.sh`, then pushes the backup dir to a dedicated **private** GitHub repo `<account>/<id>-backups` (HTTPS + gh auth). The project's `dev-ops.md` states only *how* + *where*; the framework owns schedule, storage, and push.
 - **Maintenance**: `ops pause <svc>|--all [--reason]` / `ops resume` — paused services show `[PAUSED]` in `ops check list`; do NOT "fix" a paused service during incidents.
-- **Git**: auto-devops repo branch is `master` (push `origin master`); the wiki repo is separate, pushed via `ops wiki commit`.
+- **Git**: auto-devops repo branch is `main` (push `origin main`); the wiki repo is separate, pushed via `ops wiki commit`.
 - **Gateway**: never `systemctl --user stop/restart` a hermes-gateway from inside a gateway session — it kills the session. Use `hermes gateway restart` from outside, or `delegate_task`.
 - **Verify everything** with `./bin/ops run --service <id>` (substring match: `hermes` also matches `hermes-jf`/`hermes-ws`) and the suites: `bash tests/test.sh` (integration + Python unit suites for health.py/scaffold.py), `bash tests/test_lib.sh` (engine unit tests: lib/router/runner/backup).
 
@@ -51,7 +51,7 @@ No task context → point to `~/projects/auto-devops/`.
    ```
    This creates the check scripts, registers the service in `config.yaml`, and (with `--backup`) creates the private backups repo. Backup globs: the scaffold FIRST reads the project's `dev-ops.md` Backup Guide for a `- **Backup files:** \`glob1\`, \`glob2\`` line (comma-separated, multi-artifact) — `--backup` is only a fallback when the contract declares none. The generated freshness check verifies EACH pattern independently (a fresh archive must not mask a stale one), so the contract is the single source of truth for what gets monitored. Add `./bin/ops check new ssl:<id> --domain <domain>` if domain-served.
 3. System-level services: hand-write `sys-svc-<id>.sh` (copy `checks/sys-svc-caddy.sh`).
-4. Verify (`ops run --service <id>`), commit auto-devops (`git push origin master`), `ops wiki commit`.
+4. Verify (`ops run --service <id>`), commit auto-devops (`git push origin main`), `ops wiki commit`.
 5. Note: `--backup` requires the project repo to already exist with a GitHub `origin` (the backups remote is derived from it).
 
 ### Deploy a Project

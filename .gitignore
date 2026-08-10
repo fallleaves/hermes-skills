@@ -20,3 +20,6 @@ credentials/
 # Python
 __pycache__/
 *.pyc
+
+# Hermes runtime usage tracking (auto-updated on every skill load)
+.usage.json

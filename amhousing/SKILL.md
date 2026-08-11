@@ -28,6 +28,9 @@ returned `skill_dir` field, then run `<skill_dir>/scripts/<script>.py`.
 
 ## Workflows
 1. **Process messages**: `cd /home/jfeng/projects/amhousing && python3 scripts/process_message.py` — claims the oldest eligible message (processed=1 + claimedAt). After analyzing, INSERT the reply HouseMessage (senderType='agent', processed=1) — that reply is the completion marker; without it the message is retried after 30 minutes.
+   **Status-linkage check (r113)**: before finalizing ANY write for a message, check whether the update changes the house's state or resolves an OPEN issue:
+   - The claimed-message context includes `open_maintenance` (MaintenanceRecord rows still pending/in_progress for that house). If the user's update demonstrably resolves one (replacement/repair invoice for the exact item an open record covers, contractor completion report, etc.), set that record to `status='completed'` and write a HouseEvent documenting the closure (title in the message's language).
+   - Partial progress → update the record's notes/description instead of closing it. No evidence → keep it open and say so in the reply. Reverse direction too: an update that reveals a NEW issue (e.g. damage found during a repair) should create a corresponding open record.
 2. **Query**: `python3 <skill_dir>/scripts/query_house.py --house-id <id> --query "<terms>"`
 3. **Maintenance scan**: Check warrantyExpiry, lastServiceDate, condition → write alerts to HouseThread
 4. **Recommend replacement**: Read current specs + web_search → compare → recommend

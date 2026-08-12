@@ -23,7 +23,7 @@ NEVER hardcode a profile path like `~/.hermes/profiles/<name>/skills/...`.
 Resolve the skill dir at runtime: call `skill_view(name='amhousing')` and use the
 returned `skill_dir` field, then run `<skill_dir>/scripts/<script>.py`.
 - `process_message.py` — CLAIM one unread HouseMessage + dump context (repo copy; claim/retry semantics: a message claimed >30 min ago with no agent reply is retried, so crashes never silently drop messages)
-- `upsert_fixture.py` — deduplicate + write RoomFixture with version history
+- `upsert_fixture.py` — deduplicate + write RoomFixture with version history (stdin-JSON kwargs interface — see Rules; does NOT write the HouseEvent)
 - `query_house.py` — search across Room, RoomFixture, RoomFurniture, HouseSystem (also `--scan-warranties`)
 - `write_pending.py` — park a low-confidence/conflicting update as PendingConfirmation + SSE-notify the owner
 - `export_house.py` — export house details (note: events/ledger/leases/files are NOT included)
@@ -100,6 +100,14 @@ etc. through the UI. Processing contract:
 - **Infer first**: for every message, run the Role-section inference checklist
   and decision ladder before applying the rules below.
 - Dedup before write (same roomId+type → update, not duplicate)
+- `upsert_fixture.py` reads ONE JSON object of kwargs from stdin (no CLI
+  flags) and dedups by roomId+type:
+  ```
+  echo '{"room_id":"<roomId>","fixture_type":"lamp","name":"Lamp","purchase_price":109900,"source_event_id":"<eventId>"}' | python3 <skill_dir>/scripts/upsert_fixture.py
+  ```
+  It writes RoomFixture + RoomFixtureVersion only — you MUST create the
+  HouseEvent yourself (per "Every data change" below) and pass its id as
+  `source_event_id` so the version row is traceable (m7).
 - Low confidence (< 0.6) or conflicting with existing value → do NOT write
   directly. Use `python3 <skill_dir>/scripts/write_pending.py`:
   ```

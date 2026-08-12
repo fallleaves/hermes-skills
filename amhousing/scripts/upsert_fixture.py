@@ -122,7 +122,7 @@ def upsert(room_id, fixture_type, name, category=None, brand=None, model=None,
            serial_number=None, material=None, color=None, dimensions=None,
            mount_specs=None, purchase_price=None, supplier=None,
            warranty_expiry=None, condition=None, notes=None, images=None,
-           confidence=None):
+           confidence=None, source_event_id=None):
     """Find existing fixture or create new. Returns (action, fixture_dict)."""
     warranty_expiry = normalize_datetime(warranty_expiry)
     purchase_price = normalize_purchase_price(purchase_price)
@@ -184,9 +184,12 @@ def upsert(room_id, fixture_type, name, category=None, brand=None, model=None,
             snapshot = json.dumps(old, default=str)
             if confidence is not None:
                 snapshot = json.dumps({**old, "confidence": confidence}, default=str)
+            # m7: sourceEventId was never populated — the version history
+            # could not be traced back to the HouseEvent that caused the
+            # change. Record it when the caller passes it.
             con.execute(
-                "INSERT INTO RoomFixtureVersion (id, fixtureId, snapshot, source, createdAt) VALUES (?, ?, ?, 'agent_extraction', ?)",
-                (cuid(), old['id'], snapshot, ts)
+                "INSERT INTO RoomFixtureVersion (id, fixtureId, snapshot, source, createdAt, sourceEventId) VALUES (?, ?, ?, 'agent_extraction', ?, ?)",
+                (cuid(), old['id'], snapshot, ts, source_event_id)
             )
             con.commit()
             updated = dict(con.execute("SELECT * FROM RoomFixture WHERE id = ?", (old['id'],)).fetchone())
@@ -220,8 +223,8 @@ def upsert(room_id, fixture_type, name, category=None, brand=None, model=None,
             if confidence is not None else "{}"
         )
         con.execute(
-            "INSERT INTO RoomFixtureVersion (id, fixtureId, snapshot, source, createdAt) VALUES (?, ?, ?, 'agent_extraction', ?)",
-            (cuid(), fid, initial_snapshot, ts)
+            "INSERT INTO RoomFixtureVersion (id, fixtureId, snapshot, source, createdAt, sourceEventId) VALUES (?, ?, ?, 'agent_extraction', ?, ?)",
+            (cuid(), fid, initial_snapshot, ts, source_event_id)
         )
         con.commit()
         new_fixture = dict(con.execute("SELECT * FROM RoomFixture WHERE id = ?", (fid,)).fetchone())

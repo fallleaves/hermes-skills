@@ -26,6 +26,12 @@ def escape_like(q):
 
 def search(house_id, query):
     con = get_db(); q = f"%{escape_like(query)}%"; results = []
+    # m6: Room itself was not searched although SKILL.md promises it —
+    # a room-name/type query returned misleading empty results. Search
+    # the Room table first (name + type), scoped to the house.
+    rows = con.execute("SELECT * FROM Room WHERE houseId=? AND (name LIKE ? ESCAPE '\\' OR type LIKE ? ESCAPE '\\') LIMIT 20",
+                       (house_id, q, q)).fetchall()
+    results.extend([dict(r) for r in rows])
     for table, cols in [("RoomFixture", "rf.name LIKE ? ESCAPE '\\' OR rf.brand LIKE ? ESCAPE '\\' OR rf.model LIKE ? ESCAPE '\\' OR rf.type LIKE ? ESCAPE '\\'"),
                          ("RoomFurniture", "rf.name LIKE ? ESCAPE '\\' OR rf.brand LIKE ? ESCAPE '\\' OR rf.model LIKE ? ESCAPE '\\'")]:
         rows = con.execute(f"SELECT rf.*, r.name as room FROM {table} rf JOIN Room r ON rf.roomId=r.id WHERE r.houseId=? AND ({cols}) LIMIT 20",

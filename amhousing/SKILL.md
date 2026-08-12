@@ -52,6 +52,22 @@ then act.
 - **Amount / price** → ledger entry or asset purchase-price update.
 - **Date / time info** → lastServiceDate, warranty, lease, service schedule.
 - **Contact / address / contract** → House, Lease, or tenant fields.
+- **Asset retirement/removal** ("sold the old sofa", "removed the old boiler")
+  → reflect the decommissioning on the asset record (notes/condition, or the
+  model's status field if it has one) + HouseEvent; never hard-delete an asset
+  the owner described — history matters.
+- **Lease lifecycle** (renewal, rent increase, move-out, deposit return) →
+  update Lease (status/endDate/monthlyRent); a returned deposit is an
+  EXPENSE ledger entry; a rent increase also updates monthlyRent + HouseEvent.
+- **Repair quote / contractor booking** ("plumber quoted €450", "contractor
+  coming Friday") → record cost/contractor/date on the open MaintenanceRecord;
+  this is partial progress — do NOT close the work order (r113).
+- **Purchase without invoice** ("bought a new fridge") → still write the asset
+  with the stated value; note in the record that no invoice is on file yet.
+- **Window / outdoor / Item updates** ("replaced a window", "new garden
+  furniture") → update the matching RoomWindow / OutdoorSpace / Item record.
+- **House master data** (energy label, renovation year, building info) →
+  update the House fields.
 
 ### Decision ladder (after inferring what to do)
 

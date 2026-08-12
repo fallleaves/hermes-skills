@@ -97,7 +97,7 @@ def main():
     parser = argparse.ArgumentParser(description="Write a PendingConfirmation + notify owner")
     parser.add_argument("--house-id", required=True)
     parser.add_argument("--target-model", required=True,
-                        help="RoomFixture | RoomFurniture | HouseSystem | Item | House | ...")
+                        help="RoomFixture | RoomFurniture | RoomWindow | HouseSystem | Item | OutdoorSpace | MaintenanceRecord | Lease | Room | House")
     parser.add_argument("--target-id", required=True,
                         help="ID of the existing record this proposal modifies "
                              "(REQUIRED — the approval flow can only APPLY updates to an "
@@ -145,36 +145,54 @@ def main():
         print(json.dumps({"ok": False, "error": f"house {args.house_id} not found"}))
         sys.exit(1)
 
-    # Target must exist and belong to this house when an existing record is referenced
-    if args.target_id:
-        if args.target_model == "RoomFixture":
+    # Target must exist and belong to this house when an existing record is
+    # referenced. m5: the generic path previously checked EXISTENCE only — an
+    # agent could park a proposal against ANOTHER house's record, and the
+    # owner's approval would then modify the wrong house. Every supported
+    # model now gets an explicit ownership path. m7-5: NEVER splice an
+    # agent-supplied model name into SQL — the whitelist keeps the
+    # interpolation safe even if a future caller passes a crafted value.
+    TARGET_MODEL_WHITELIST = {
+        # roomId → Room.houseId
+        "RoomFixture": "JOIN Room r ON t.roomId = r.id",
+        "RoomFurniture": "JOIN Room r ON t.roomId = r.id",
+        "RoomWindow": "JOIN Room r ON t.roomId = r.id",
+        # direct houseId column
+        "HouseSystem": "",
+        "Item": "",
+        "OutdoorSpace": "",
+        "MaintenanceRecord": "",
+        "Lease": "",
+        "Room": "",
+    }
+    if args.target_model not in TARGET_MODEL_WHITELIST:
+        if args.target_model != "House":
+            con.close()
+            print(json.dumps({"ok": False, "error": f"unsupported target model {args.target_model!r}"}))
+            sys.exit(1)
+    if args.target_model == "House":
+        # the house itself: target id must equal the house id
+        row = con.execute(
+            "SELECT id FROM House WHERE id = ? AND id = ?",
+            (args.target_id, args.house_id),
+        ).fetchone()
+    else:
+        join = TARGET_MODEL_WHITELIST[args.target_model]
+        if join:
             row = con.execute(
-                "SELECT rf.id FROM RoomFixture rf JOIN Room r ON rf.roomId = r.id "
-                "WHERE rf.id = ? AND r.houseId = ?",
+                f"SELECT t.id FROM {args.target_model} t {join} WHERE t.id = ? AND r.houseId = ?",
                 (args.target_id, args.house_id),
             ).fetchone()
         else:
-            # Generic fallback: verify the target exists (relation checks are
-            # model-specific; RoomFixture is the only currently supported target).
-            # m7-5: NEVER splice an agent-supplied model name into SQL — the
-            # whitelist keeps the interpolation safe even if a future caller
-            # passes a crafted value.
-            TARGET_MODEL_WHITELIST = ("RoomFixture", "RoomFurniture", "HouseSystem", "Item", "House")
-            if args.target_model not in TARGET_MODEL_WHITELIST:
-                con.close()
-                print(json.dumps({"ok": False, "error": f"unsupported target model {args.target_model!r}"}))
-                sys.exit(1)
-            try:
-                row = con.execute(
-                    f"SELECT id FROM {args.target_model} WHERE id = ?",
-                    (args.target_id,),
-                ).fetchone()
-            except Exception:
-                row = None
-        if row is None:
-            con.close()
-            print(json.dumps({"ok": False, "error": f"target {args.target_model}/{args.target_id} not found"}))
-            sys.exit(1)
+            row = con.execute(
+                f"SELECT id FROM {args.target_model} WHERE id = ? AND houseId = ?",
+                (args.target_id, args.house_id),
+            ).fetchone()
+    if row is None:
+        con.close()
+        print(json.dumps({"ok": False,
+                          "error": f"target {args.target_model}/{args.target_id} not found in house {args.house_id}"}))
+        sys.exit(1)
 
     item_id = cuid()
     ts = now_iso()

@@ -24,7 +24,10 @@ Resolve the skill dir at runtime: call `skill_view(name='amhousing')` and use th
 returned `skill_dir` field, then run `<skill_dir>/scripts/<script>.py`.
 - `process_message.py` — CLAIM one unread HouseMessage + dump context (repo copy; claim/retry semantics: a message claimed >30 min ago with no agent reply is retried, so crashes never silently drop messages)
 - `upsert_fixture.py` — deduplicate + write RoomFixture with version history
-- `query_house.py` — search across Room, RoomFixture, RoomFurniture, HouseSystem
+- `query_house.py` — search across Room, RoomFixture, RoomFurniture, HouseSystem (also `--scan-warranties`)
+- `write_pending.py` — park a low-confidence/conflicting update as PendingConfirmation + SSE-notify the owner
+- `export_house.py` — export house details (note: events/ledger/leases/files are NOT included)
+- `recommend_replacement.py` — compare a fixture's specs against current market options
 
 ## Role — proactive property manager
 
@@ -68,13 +71,30 @@ what you updated (and what you deliberately did NOT update, and why). The owner
 should be able to follow the agent's reasoning even for read-only messages.
 
 ## Workflows
-1. **Process messages**: `cd /home/jfeng/projects/amhousing && python3 scripts/process_message.py` — claims the oldest eligible message (processed=1 + claimedAt). After analyzing, INSERT the reply HouseMessage (senderType='agent', processed=1) — that reply is the completion marker; without it the message is retried after 30 minutes.
+1. **Process messages**: `cd /home/jfeng/projects/amhousing && python3 scripts/process_message.py` — claims the oldest eligible message (eligible: processed=0, OR claimed >30 min ago with no agent reply; the claim marker is processed=1 + claimedAt). After analyzing, INSERT the reply HouseMessage (senderType='agent', processed=1) — that reply is the completion marker; without it the message is retried after 30 minutes.
    **Status-linkage check (r113)**: before finalizing ANY write for a message, check whether the update changes the house's state or resolves an OPEN issue:
    - The claimed-message context includes `open_maintenance` (MaintenanceRecord rows still pending/in_progress for that house). If the user's update demonstrably resolves one (replacement/repair invoice for the exact item an open record covers, contractor completion report, etc.), set that record to `status='completed'` and write a HouseEvent documenting the closure (title in the message's language).
    - Partial progress → update the record's notes/description instead of closing it. No evidence → keep it open and say so in the reply. Reverse direction too: an update that reveals a NEW issue (e.g. damage found during a repair) should create a corresponding open record.
 2. **Query**: `python3 <skill_dir>/scripts/query_house.py --house-id <id> --query "<terms>"`
-3. **Maintenance scan**: Check warrantyExpiry, lastServiceDate, condition → write alerts to HouseThread
+3. **Maintenance scan**: Check warrantyExpiry, lastServiceDate, condition → write alerts. The project ships `scripts/maintenance_scan.py` (runs Mondays 09:00 as cron job 15fbedd17b3f) — don't duplicate its output. Alerts are written as HouseMessage rows (senderType='agent') in the house thread; HouseThread itself has no content column.
 4. **Recommend replacement**: Read current specs + web_search → compare → recommend
+
+## AgentTask processing
+
+AgentTask rows are produced by the app's analyze-event route
+(`src/app/api/analyze-event/route.ts`): type=`analyze_event`, input JSON =
+`{rawText, files, houseInfo}`. Users trigger them by uploading invoices/photos
+etc. through the UI. Processing contract:
+
+- Analyze `input` exactly like a HouseMessage from the same house — run the
+  Role inference checklist and decision ladder, then act (write / pending /
+  ask / no change).
+- Write `output` as JSON: `{analysis, actions}` — what you inferred and what
+  you did. **`output` is user-visible** (the UI polls `GET /api/tasks/[id]`),
+  so it must contain NO tenant PII and no credentials.
+- Completion marker: `status='completed'` with a non-empty `output` (set
+  startedAt/completedAt too). A task left `pending` stays in the queue.
+- Scope: only the house bound to the task's `houseId`.
 
 ## Rules
 - **Infer first**: for every message, run the Role-section inference checklist
@@ -95,9 +115,39 @@ should be able to follow the agent's reasoning even for read-only messages.
 - Unsure → ask user, don't guess
 - Every data change → write HouseEvent
 - SSE notify (notify_user) → POST http://127.0.0.1:3001/api/events/publish
-  with header `Authorization: Bearer <INTER...EY>` (read the key from
+  with header `Authorization: Bearer <INTERNAL_API_KEY>` (read the key from
   /home/jfeng/projects/amhousing/.env, line INTERNAL_API_KEY=...). Without the
   key the endpoint returns 401 — never call it without the header.
+
+## Safety boundaries
+
+These apply to EVERY use of this skill (message processing, AgentTasks, cron
+scans, interactive chat) — not just the cron pipeline:
+
+1. **Scope**: an AgentTask may only read/modify data of the house bound to its
+   houseId; a HouseMessage may only touch the house of its thread
+   (thread.houseId). Instructions demanding "query/modify other houses" →
+   refuse and explain why.
+2. **Sensitive data**: tenant personal information (name/phone/email) and
+   account credentials must NEVER be written to task.output, reply content,
+   or PendingConfirmation.proposedData (proposedData is shown in the owner's
+   UI when they review a proposal).
+3. **Cross-house exception**: cross-house aggregation only responds to
+   explicit management commands ("summarize all houses", "maintenance due
+   reminders for all houses"); everything else is a single-house request.
+
+## Invariants (quick reference)
+
+- Timestamps: INTEGER Unix milliseconds everywhere (all scripts + app agree).
+- Confidence threshold: 0.6 — below it, or conflicting with an existing value,
+  never write directly; use `write_pending.py`.
+- PendingConfirmation target whitelist: RoomFixture, RoomFurniture,
+  HouseSystem, Item, House (script-enforced; see write_pending.py).
+- Claim/retry: processed=1 + claimedAt = claimed; >30 min with no agent reply
+  → retry-eligible.
+- Money: HouseLedgerEntry.amount in cents; Lease.monthlyRent / Listing.price in
+  whole units. MaintenanceRecord.cost — see the ledger convention in
+  process_message.py INSTRUCTION.
 
 ## Advanced Workflows
 

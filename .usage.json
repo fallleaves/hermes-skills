@@ -16,16 +16,16 @@
     "archived_at": null,
     "created_at": "2026-07-26T22:38:08.842482+00:00",
     "created_by": null,
-    "last_patched_at": "2026-08-02T17:02:29.922840+00:00",
-    "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-09T21:23:55.388486+00:00",
-    "last_viewed_at": "2026-08-09T21:23:55.386135+00:00",
-    "patch_count": 9,
-    "patch_generation": 0,
+    "last_patched_at": "2026-08-11T23:20:25.733945+00:00",
+    "last_reused_patch_generation": 1,
+    "last_used_at": "2026-08-21T21:04:44.147304+00:00",
+    "last_viewed_at": "2026-08-21T21:04:44.142940+00:00",
+    "patch_count": 10,
+    "patch_generation": 1,
     "pinned": false,
     "state": "active",
-    "use_count": 5832,
-    "view_count": 102
+    "use_count": 5843,
+    "view_count": 112
   },
   "architecture-diagram": {
     "archived_at": null,
@@ -58,14 +58,14 @@
     "created_by": null,
     "last_patched_at": "2026-08-04T18:05:36.714463+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-07T00:23:37.018434+00:00",
-    "last_viewed_at": "2026-08-07T00:23:37.015757+00:00",
+    "last_used_at": "2026-08-11T17:25:16.569817+00:00",
+    "last_viewed_at": "2026-08-11T17:25:16.567045+00:00",
     "patch_count": 68,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 252,
-    "view_count": 160
+    "use_count": 255,
+    "view_count": 163
   },
   "autonomous-ai-agents/crash-recovery": {
     "archived_at": null,
@@ -188,16 +188,16 @@
     "archived_at": null,
     "created_at": "2026-08-09T21:45:45.976008+00:00",
     "created_by": null,
-    "last_patched_at": "2026-08-09T21:45:54.434619+00:00",
-    "last_reused_patch_generation": 1,
-    "last_used_at": "2026-08-09T22:25:35.541269+00:00",
-    "last_viewed_at": "2026-08-09T22:25:35.536274+00:00",
-    "patch_count": 1,
-    "patch_generation": 1,
+    "last_patched_at": "2026-08-10T01:09:13.675809+00:00",
+    "last_reused_patch_generation": 4,
+    "last_used_at": "2026-08-11T23:27:04.149856+00:00",
+    "last_viewed_at": "2026-08-11T23:27:04.147354+00:00",
+    "patch_count": 4,
+    "patch_generation": 4,
     "pinned": false,
     "state": "active",
-    "use_count": 3,
-    "view_count": 3
+    "use_count": 9,
+    "view_count": 9
   },
   "code-reviewer": {
     "archived_at": null,
@@ -303,18 +303,33 @@
     "use_count": 1,
     "view_count": 1
   },
-  "hermes-agent": {
-    "created_at": "2026-06-17T16:49:27.665973+00:00",
+  "graphify": {
+    "archived_at": null,
+    "created_at": "2026-08-19T06:01:53.631395+00:00",
     "created_by": null,
+    "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-09T20:34:45.172173+00:00",
-    "last_viewed_at": "2026-08-09T20:34:45.170002+00:00",
+    "last_used_at": "2026-08-19T06:01:53.634155+00:00",
+    "last_viewed_at": "2026-08-19T06:01:53.631416+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 54,
-    "view_count": 54
+    "use_count": 1,
+    "view_count": 1
+  },
+  "hermes-agent": {
+    "created_at": "2026-06-17T16:49:27.665973+00:00",
+    "created_by": null,
+    "last_reused_patch_generation": 0,
+    "last_used_at": "2026-08-21T16:17:20.415237+00:00",
+    "last_viewed_at": "2026-08-21T16:17:20.412637+00:00",
+    "patch_count": 0,
+    "patch_generation": 0,
+    "pinned": false,
+    "state": "active",
+    "use_count": 65,
+    "view_count": 65
   },
   "hermes-agent-skill-authoring": {
     "archived_at": null,
@@ -687,13 +702,13 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-09T22:25:38.517919+00:00",
-    "last_viewed_at": "2026-08-09T22:25:38.515184+00:00",
+    "last_used_at": "2026-08-11T23:42:42.684483+00:00",
+    "last_viewed_at": "2026-08-11T23:42:42.681588+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 8,
-    "view_count": 8
+    "use_count": 13,
+    "view_count": 13
   }
 }

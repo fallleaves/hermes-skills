@@ -261,10 +261,22 @@ deferred (with user notice) or surfaces it to the user and stops the loop.
 - Stage only intended files — never commit build artifacts, logs, or
   untracked junk; review-notes.md is committed with the round like the
   report.
-- Keep the review sub-agent read-only except the two allowed files (the
-  round report and NOTES_FILE); any other write invalidates the round's
+- Keep the review sub-agent read-only except the two allowed files (the round
+  report and NOTES_FILE); any other write invalidates the round's
   independence. NOTES_FILE is bounded at 5 KB — run `wc -c` after any write,
   trim or consolidate when near the limit.
+- Round numbering: compute N by PARSING the numeric max of existing
+  `round-(\d+).md` filenames (e.g. `ls "$REVIEWS_DIR" | grep -oE
+  'round-[0-9]+' | sed 's/round-//' | sort -n | tail -1`) — NEVER by an
+  alphabetical `ls | tail`, which sorts round-100 BEFORE round-11 and hides
+  high-numbered files mid-list. A new review series started inside an
+  existing REVIEWS_DIR (new target, same dir) can silently OVERWRITE legacy
+  round files whose reports are still committed: verify the true max first
+  and number the new series from max+1; if a legacy file was already
+  overwritten, restore it from git history (`git checkout <old-commit> --
+  <file>`) and renumber the new reports, adding a renumbering note at the
+  top of each (fix-commit subjects keep their original r<N>-n<M> labels for
+  traceability).
 - If `delegate_task` is unavailable, perform the review/fix steps inline with
   equivalent separation (read-only review pass, then fix pass), preserving
   the file contract.

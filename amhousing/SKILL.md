@@ -43,9 +43,11 @@ propertyType, energyLabel, archived}` per house; displayName from the
 Listing title chain in the message's language, fallback address; archived
 houses stay IN the catalog with their flag). Status: `message_claimed` |
 `no_pending_messages`. Per-house context AFTER scope resolution (never
-before): `process_unified_message.py --house-id <id>` → `context_dumped`
+before): `process_unified_message.py --house-id <id> --user-id <userId>`
+→ `context_dumped`
 (house/rooms/existing_fixtures/open_maintenance) — refuses (stderr, exit 1)
-a house the conversation owner does not own. Plus this skill's own
+a house the conversation owner does not own (pass the claimed message's
+`userId` from the claim dump — the dump carries it). Plus this skill's own
 `export_house.py` / `query_house.py` for deeper lookups.
 
 Processing protocol (per message):

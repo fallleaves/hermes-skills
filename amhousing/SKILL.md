@@ -212,8 +212,11 @@ Canonical 6-item list, lockstepped with docs/unified-house-chat.md §8:
    → refuse and explain why.
 2. **AgentConversationMessage scope**: the unified conversation is an
    explicitly authorized cross-house channel, but per-message house
-   resolution is MANDATORY (the Unified conversation protocol above); a
-   message that cannot be resolved is NOT written — ask instead.
+   resolution is MANDATORY (the Unified conversation protocol above) —
+   including via a user-selected scope (D4, tier 2): the picker only
+   ever offers the owner's own non-archived houses, so a selection
+   introduces no cross-house surface; a message that cannot be resolved
+   is NOT written — ask instead.
 3. **Cross-house exception**: cross-house aggregation responds only to
    explicit management commands ("summarize all houses", "maintenance due
    reminders for all houses"), including inside the unified conversation;

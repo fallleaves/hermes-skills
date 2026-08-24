@@ -59,6 +59,9 @@ Processing protocol (per message):
    selected, …"); explicit mentions and management commands ("all
    houses"/"summarize") OUTRANK the selection; a selection id NOT in the
    catalog → REFUSE and explain, never guess, never fall back to context.
+   A selection id whose house has `archived=true` (an archived owned
+   house — a persisted pin can outlive an archiving) → REFUSE and
+   explain, same as a stale id.
    Then multi-house → process each house, one combined reply with
    `/my-houses/<id>` links;
    concrete info but NO house mentioned → ask, don't guess, don't write —
@@ -215,8 +218,10 @@ Canonical 6-item list, lockstepped with docs/unified-house-chat.md §8:
    resolution is MANDATORY (the Unified conversation protocol above) —
    including via a user-selected scope (D4, tier 2): the picker only
    ever offers the owner's own non-archived houses, so a selection
-   introduces no cross-house surface; a message that cannot be resolved
-   is NOT written — ask instead.
+   introduces no cross-house surface (a selection id whose house is
+   archived is refused — 400 server-side and agent-side REFUSE, same as
+   a stale id); a message that cannot be resolved is NOT written — ask
+   instead.
 3. **Cross-house exception**: cross-house aggregation responds only to
    explicit management commands ("summarize all houses", "maintenance due
    reminders for all houses"), including inside the unified conversation;

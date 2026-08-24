@@ -52,8 +52,15 @@ a house the conversation owner does not own (pass the claimed message's
 
 Processing protocol (per message):
 1. RESOLVE the scope FIRST against the houses catalog — explicit
-   mention(s) → match (address/city/postcode, exact then fuzzy); multi-house
-   → process each house, one combined reply with `/my-houses/<id>` links;
+   mention(s) → match (address/city/postcode, exact then fuzzy).
+   USER-SELECTED SCOPE (D4, tier 2): when the claimed message carries a
+   non-null `userScopeHouseIds` AND names no house explicitly, resolve to
+   the selected house(s) WITHOUT asking — state it in the reply ("As you
+   selected, …"); explicit mentions and management commands ("all
+   houses"/"summarize") OUTRANK the selection; a selection id NOT in the
+   catalog → REFUSE and explain, never guess, never fall back to context.
+   Then multi-house → process each house, one combined reply with
+   `/my-houses/<id>` links;
    concrete info but NO house mentioned → ask, don't guess, don't write —
    EXCEPT the conversational fallback: if the conversation context
    establishes a current house (the most recent resolved agent message

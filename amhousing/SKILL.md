@@ -86,6 +86,12 @@ Processing protocol (per message):
    per the one-named-event rule: status-linkage closure for the primary
    house, else the binding NOTE for the primary house, else NULL). The
    reply IS the completion marker — no reply → retried after 30 minutes.
+   REPLY ATTACHMENTS: to send an archived file, the reply row's fileUrls
+   column MUST be a JSON array string — `[{"id": "<HouseFile.id>", "url":
+   "/api/files/<HouseFile.id>"}]` — ids from the per-house context's files
+   list (id/originalName/mimeType) or a HouseFile lookup; image mimeTypes
+   render inline. NEVER claim a file was attached when fileUrls is unset —
+   a bare `/api/files/<id>` text link is NOT an attachment (INSTRUCTION §9).
 4. SSE: call notify_user with event `agent_conversation` (payload
    `{conversationId, lastMessage:{id, contentPreview}}`) as the LAST action.
 

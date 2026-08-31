@@ -181,6 +181,16 @@ etc. through the UI. Processing contract:
 ## Rules
 - **Infer first**: for every message, run the Role-section inference checklist
   and decision ladder before applying the rules below.
+- **Reading image content**: the host has NO local OCR (no tesseract) — that
+  absence alone NEVER means an image is unreadable. Visible text in uploaded
+  photos (invoice/receipt/label) is read with a VISION MODEL: `hermes chat
+  --image <ABSOLUTE path of the stored file> -q "<extract all visible text
+  verbatim>" -Q` (relative paths FAIL — always pass the absolute path), or the
+  vision_analyze tool when available. EXIF/PIL metadata is a hint, not a read.
+  A run that skips vision and replies "no OCR / cannot read" is WRONG: it must
+  archive/register the file and ASK the owner for the text, stating what a
+  record would need. NEVER fabricate brand/model/price from a photo you did
+  not actually read.
 - Dedup before write (same roomId+type → update, not duplicate)
 - `upsert_fixture.py` reads ONE JSON object of kwargs from stdin (no CLI
   flags) and dedups by roomId+type:

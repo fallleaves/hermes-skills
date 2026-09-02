@@ -110,7 +110,8 @@ then act.
 ### Inference checklist (message type → actions)
 
 - **Invoice / receipt** → verify & update asset value, link the asset, attach a
-  HouseEvent; check whether it covers an open MaintenanceRecord (see r113
+  HouseEvent; compute & record the warranty (warranty.py, see the Warranty
+  section below); check whether it covers an open MaintenanceRecord (see r113
   status-linkage below).
 - **Photo / image** → archive as HouseFile, link to room / asset / event.
 - **Status statement** ("fixed", "delivered", "broken") → update the matching
@@ -119,7 +120,8 @@ then act.
 - **New problem report** ("water dripping", "noise from the floor") → create an
   open MaintenanceRecord for the room/item, even if the user only described it.
 - **Amount / price** → ledger entry or asset purchase-price update.
-- **Date / time info** → lastServiceDate, warranty, lease, service schedule.
+- **Date / time info** → lastServiceDate, warranty (warrantyExpiry +
+  warrantyBasis), lease, service schedule.
 - **Contact / address / contract** → House, Lease, or tenant fields.
 - **Asset retirement/removal** ("sold the old sofa", "removed the old boiler")
   → reflect the decommissioning on the asset record (notes/condition, or the
@@ -160,6 +162,40 @@ should be able to follow the agent's reasoning even for read-only messages.
 2. **Query**: `python3 <skill_dir>/scripts/query_house.py --house-id <id> --query "<terms>"`
 3. **Maintenance scan**: Check warrantyExpiry, lastServiceDate, condition → write alerts. The project ships `scripts/maintenance_scan.py` (runs Mondays 09:00 as cron job 15fbedd17b3f) — don't duplicate its output. Alerts are written as HouseMessage rows (senderType='agent') in the house thread; HouseThread itself has no content column.
 4. **Recommend replacement**: Read current specs + web_search → compare → recommend
+
+## Warranty recording & queries (2026-09, warrantyBasis migration)
+
+Every asset table (RoomFixture / RoomFurniture / HouseSystem / Item) carries
+`warrantyExpiry` + `warrantyBasis` ('legal' | 'commercial' | 'none'). The
+deterministic helper `/home/jfeng/projects/amhousing/scripts/warranty.py` does
+ALL date arithmetic — the agent never hand-computes dates:
+
+- **Recording** (invoice/receipt/purchase message, any channel): extract
+  delivery date, stated commercial term, new/used, business/private from the
+  invoice; run
+  `python3 /home/jfeng/projects/amhousing/scripts/warranty.py compute --delivery-date <YYYY-MM-DD> [--term-years N] [--term-months N] [--used] [--private]`
+  → JSON {expiry, expiry_epoch_ms, basis, ...} (exit 2 on bad input). Rules
+  (NL art. 7:17 / 7:18a BW): new goods from a business → legal floor 2 years;
+  second-hand/private → no floor, basis 'none' unless a term is stated; a
+  stated term is additive (expiry = LONGER of floor and term), basis
+  'commercial' only when it exceeds the floor. WRITE warrantyExpiry
+  (expiry_epoch_ms, INTEGER ms) + warrantyBasis in the same asset update,
+  mention both in the HouseEvent and the reply. Ambiguity → write_pending /
+  ask, never guess. Never fill from a guess — a stated term never shortens
+  the floor.
+- **Querying** ("still under warranty?", "it broke"): read warrantyExpiry +
+  warrantyBasis, run
+  `python3 /home/jfeng/projects/amhousing/scripts/warranty.py status --expiry <YYYY-MM-DD> [--delivery <YYYY-MM-DD>]`
+  → {status: covered|expired|unknown, days_left, advice}; paraphrase 'advice'
+  in the message's language (seller-burden note only within year 1 of
+  delivery). Reply: status + expiry date + basis + what the owner can do
+  (year 1 → demand repair from the seller; later → commercial/manufacturer;
+  expired → own cost). Expiry unknown → ask for the invoice/purchase date.
+- `backfill_warranties.py` (repo scripts) retroactively fills assets that
+  predate the rule: anchor date (purchaseDate/installationDate) or structured
+  notes-JSON dates → legal 2y, one linked HouseEvent each, non-destructive
+  (never touches an existing warrantyExpiry); conflicting note dates are
+  reported AMBIGUOUS and left untouched. Run with `--dry-run` first.
 
 ## AgentTask processing
 

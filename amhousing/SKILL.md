@@ -62,8 +62,10 @@ Processing protocol (per message):
    A selection id whose house has `archived=true` (an archived owned
    house — a persisted pin can outlive an archiving) → REFUSE and
    explain, same as a stale id.
-   Then multi-house → process each house, one combined reply with
-   `/my-houses/<id>` links;
+   Then multi-house → process each house, one combined plain-language
+   reply — NEVER internal paths (/my-houses/..., /api/...) in reply text
+   (dead, non-clickable on external channels; point to records in words:
+   "recorded in the house timeline");
    concrete info but NO house mentioned → ask, don't guess, don't write —
    EXCEPT the conversational fallback: if the conversation context
    establishes a current house (the most recent resolved agent message

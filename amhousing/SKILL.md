@@ -309,6 +309,31 @@ Canonical 6-item list, lockstepped with docs/unified-house-chat.md §8:
   whole units. MaintenanceRecord.cost — see the ledger convention in
   process_message.py INSTRUCTION.
 
+## Rent payment plans & status (2026-09, rent_calc.py)
+
+- `Lease.paymentPlan` ∈ {'monthly', 'yearly', 'hybrid_first6'} (default
+  'monthly'); `Lease.annualRent` = yearly amount in whole EUR (NULL →
+  monthlyRent*12). hybrid_first6 is a **12-month lease only**: months 1-6
+  paid monthly, months 7-12 PREPAID at contract start (due = 6×monthly,
+  dueDate = startDate). Never offer hybrid for a non-12-month lease (the
+  lease API rejects it) or an open-ended one.
+- **Recording** (new lease / lease edit, any channel): read the contract
+  wording — "年付 / jaarlijks / yearly" → plan yearly (+ annualRent when the
+  contract states a discounted amount), "前半年按月付、后半年预付" /
+  "half prepaid at the start" → hybrid_first6, plain monthly → monthly.
+  Include paymentPlan (+ annualRent if any) in the lease write.
+- **Querying rent status** ("收了多少 / 这个月交了吗 / 还欠多少 / 预付到
+  什么时候"): run the deterministic calculator —
+  `python3 /home/jfeng/projects/amhousing/scripts/rent_calc.py compute
+  --start <YYYY-MM-DD> [--end <YYYY-MM-DD>] --monthly <whole EUR>
+  [--plan monthly|yearly|hybrid_first6] [--annual <whole EUR>]
+  --payments '<json [{"date":"YYYY-MM-DD","amountCents":N}]>'
+  [--on <YYYY-MM-DD>]` — payments = the house's rent-income ledger entries
+  (INCOME + rent category; amountCents). Output JSON, amounts in CENTS:
+  {contractTotalCents, receivedTotalCents, outstandingCents,
+  prepaidThrough, periods[], current{status,...}, nextDue{...}}; status per
+  period: paid | partial | overdue | upcoming. NEVER hand-compute rent math.
+
 ## Advanced Workflows
 
 ### Export house details

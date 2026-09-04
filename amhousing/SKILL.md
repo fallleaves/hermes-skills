@@ -230,6 +230,7 @@ etc. through the UI. Processing contract:
   record would need. NEVER fabricate brand/model/price from a photo you did
   not actually read.
 - Dedup before write (same roomId+type → update, not duplicate)
+- HouseFile.storagePath is STORAGE-ROOT-RELATIVE (`houses/<houseId>/<file>`). NEVER write `private/uploads/houses/...` (root-prefixed) or an absolute path — the app joins relative paths under its root, so a root-prefixed value double-prefixes and every attached file 404s in the GUI (r143-n2).
 - `upsert_fixture.py` reads ONE JSON object of kwargs from stdin (no CLI
   flags) and dedups by roomId+type:
   ```

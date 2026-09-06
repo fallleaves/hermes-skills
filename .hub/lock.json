@@ -221,6 +221,363 @@
       },
       "installed_at": "2026-06-05T22:52:31.000963+00:00",
       "updated_at": "2026-06-05T22:52:31.000963+00:00"
+    },
+    "ascii-art": {
+      "source": "official",
+      "identifier": "official/creative/ascii-art",
+      "trust_level": "builtin",
+      "scan_verdict": "backfilled",
+      "content_hash": "sha256:29e23c2fdb90e5ab",
+      "install_path": "creative/ascii-art",
+      "files": [
+        "SKILL.md"
+      ],
+      "metadata": {
+        "backfilled_from": "optional-skills"
+      },
+      "installed_at": "2026-09-01T06:24:38.077138+00:00",
+      "updated_at": "2026-09-01T06:24:38.077138+00:00"
+    },
+    "comfyui": {
+      "source": "official",
+      "identifier": "official/creative/comfyui",
+      "trust_level": "builtin",
+      "scan_verdict": "backfilled",
+      "content_hash": "sha256:612d22cb79d98990",
+      "install_path": "creative/comfyui",
+      "files": [
+        "SKILL.md",
+        "references/official-cli.md",
+        "references/rest-api.md",
+        "references/template-integrity.md",
+        "references/workflow-format.md",
+        "scripts/_common.py",
+        "scripts/auto_fix_deps.py",
+        "scripts/check_deps.py",
+        "scripts/comfyui_setup.sh",
+        "scripts/extract_schema.py",
+        "scripts/fetch_logs.py",
+        "scripts/hardware_check.py",
+        "scripts/health_check.py",
+        "scripts/run_batch.py",
+        "scripts/run_workflow.py",
+        "scripts/ws_monitor.py",
+        "tests/README.md",
+        "tests/conftest.py",
+        "tests/pytest.ini",
+        "tests/test_check_deps.py",
+        "tests/test_cloud_integration.py",
+        "tests/test_common.py",
+        "tests/test_extract_schema.py",
+        "tests/test_run_workflow.py",
+        "workflows/README.md",
+        "workflows/animatediff_video.json",
+        "workflows/flux_dev_txt2img.json",
+        "workflows/sd15_txt2img.json",
+        "workflows/sdxl_img2img.json",
+        "workflows/sdxl_inpaint.json",
+        "workflows/sdxl_txt2img.json",
+        "workflows/upscale_4x.json",
+        "workflows/wan_video_t2v.json"
+      ],
+      "metadata": {
+        "backfilled_from": "optional-skills"
+      },
+      "installed_at": "2026-09-01T06:24:38.115406+00:00",
+      "updated_at": "2026-09-01T06:24:38.115406+00:00"
+    },
+    "excalidraw": {
+      "source": "official",
+      "identifier": "official/creative/excalidraw",
+      "trust_level": "builtin",
+      "scan_verdict": "backfilled",
+      "content_hash": "sha256:359112274e8262e0",
+      "install_path": "creative/excalidraw",
+      "files": [
+        "SKILL.md",
+        "references/colors.md",
+        "references/dark-mode.md",
+        "references/examples.md",
+        "scripts/upload.py"
+      ],
+      "metadata": {
+        "backfilled_from": "optional-skills"
+      },
+      "installed_at": "2026-09-01T06:24:38.121122+00:00",
+      "updated_at": "2026-09-01T06:24:38.121122+00:00"
+    },
+    "pretext": {
+      "source": "official",
+      "identifier": "official/creative/pretext",
+      "trust_level": "builtin",
+      "scan_verdict": "backfilled",
+      "content_hash": "sha256:9e2e8f6151b4be1b",
+      "install_path": "creative/pretext",
+      "files": [
+        "SKILL.md",
+        "references/patterns.md",
+        "templates/donut-orbit.html",
+        "templates/hello-orb-flow.html"
+      ],
+      "metadata": {
+        "backfilled_from": "optional-skills"
+      },
+      "installed_at": "2026-09-01T06:24:38.124413+00:00",
+      "updated_at": "2026-09-01T06:24:38.124413+00:00"
+    },
+    "sketch": {
+      "source": "official",
+      "identifier": "official/creative/sketch",
+      "trust_level": "builtin",
+      "scan_verdict": "backfilled",
+      "content_hash": "sha256:bea886ff483216bf",
+      "install_path": "creative/sketch",
+      "files": [
+        "SKILL.md"
+      ],
+      "metadata": {
+        "backfilled_from": "optional-skills"
+      },
+      "installed_at": "2026-09-01T06:24:38.125175+00:00",
+      "updated_at": "2026-09-01T06:24:38.125175+00:00"
+    },
+    "touchdesigner-mcp": {
+      "source": "official",
+      "identifier": "official/creative/touchdesigner-mcp",
+      "trust_level": "builtin",
+      "scan_verdict": "backfilled",
+      "content_hash": "sha256:0c6b0a3ffb64b73c",
+      "install_path": "creative/touchdesigner-mcp",
+      "files": [
+        "SKILL.md",
+        "references/3d-scene.md",
+        "references/animation.md",
+        "references/audio-reactive.md",
+        "references/dat-scripting.md",
+        "references/external-data.md",
+        "references/geometry-comp.md",
+        "references/glsl.md",
+        "references/layout-compositor.md",
+        "references/mcp-tools.md",
+        "references/midi-osc.md",
+        "references/network-patterns.md",
+        "references/operator-tips.md",
+        "references/operators.md",
+        "references/panel-ui.md",
+        "references/particles.md",
+        "references/pitfalls.md",
+        "references/postfx.md",
+        "references/projection-mapping.md",
+        "references/python-api.md",
+        "references/replicator.md",
+        "references/troubleshooting.md",
+        "scripts/setup.sh"
+      ],
+      "metadata": {
+        "backfilled_from": "optional-skills"
+      },
+      "installed_at": "2026-09-01T06:24:38.138439+00:00",
+      "updated_at": "2026-09-01T06:24:38.138439+00:00"
+    },
+    "evaluating-llms-harness": {
+      "source": "official",
+      "identifier": "official/mlops/evaluation/evaluating-llms-harness",
+      "trust_level": "builtin",
+      "scan_verdict": "backfilled",
+      "content_hash": "sha256:b518f45966286421",
+      "install_path": "mlops/evaluation/evaluating-llms-harness",
+      "files": [
+        "SKILL.md",
+        "references/api-evaluation.md",
+        "references/benchmark-guide.md",
+        "references/custom-tasks.md",
+        "references/distributed-eval.md"
+      ],
+      "metadata": {
+        "backfilled_from": "optional-skills"
+      },
+      "installed_at": "2026-09-01T06:24:38.145473+00:00",
+      "updated_at": "2026-09-01T06:24:38.145473+00:00"
+    },
+    "weights-and-biases": {
+      "source": "official",
+      "identifier": "official/mlops/evaluation/weights-and-biases",
+      "trust_level": "builtin",
+      "scan_verdict": "backfilled",
+      "content_hash": "sha256:4286e3db3985d52f",
+      "install_path": "mlops/evaluation/weights-and-biases",
+      "files": [
+        "SKILL.md",
+        "references/artifacts.md",
+        "references/integrations.md",
+        "references/sweeps.md"
+      ],
+      "metadata": {
+        "backfilled_from": "optional-skills"
+      },
+      "installed_at": "2026-09-01T06:24:38.148153+00:00",
+      "updated_at": "2026-09-01T06:24:38.148153+00:00"
+    },
+    "llama-cpp": {
+      "source": "official",
+      "identifier": "official/mlops/inference/llama-cpp",
+      "trust_level": "builtin",
+      "scan_verdict": "backfilled",
+      "content_hash": "sha256:43a4ec8fb07acce8",
+      "install_path": "mlops/inference/llama-cpp",
+      "files": [
+        "SKILL.md",
+        "references/advanced-usage.md",
+        "references/hub-discovery.md",
+        "references/optimization.md",
+        "references/quantization.md",
+        "references/server.md",
+        "references/troubleshooting.md"
+      ],
+      "metadata": {
+        "backfilled_from": "optional-skills"
+      },
+      "installed_at": "2026-09-01T06:24:38.152821+00:00",
+      "updated_at": "2026-09-01T06:24:38.152821+00:00"
+    },
+    "serving-llms-vllm": {
+      "source": "official",
+      "identifier": "official/mlops/inference/serving-llms-vllm",
+      "trust_level": "builtin",
+      "scan_verdict": "backfilled",
+      "content_hash": "sha256:688c281ab63bb0ea",
+      "install_path": "mlops/inference/serving-llms-vllm",
+      "files": [
+        "SKILL.md",
+        "references/optimization.md",
+        "references/quantization.md",
+        "references/server-deployment.md",
+        "references/troubleshooting.md"
+      ],
+      "metadata": {
+        "backfilled_from": "optional-skills"
+      },
+      "installed_at": "2026-09-01T06:24:38.156249+00:00",
+      "updated_at": "2026-09-01T06:24:38.156249+00:00"
+    },
+    "huggingface-hub": {
+      "source": "official",
+      "identifier": "official/mlops/huggingface-hub",
+      "trust_level": "builtin",
+      "scan_verdict": "backfilled",
+      "content_hash": "sha256:55fa8eb6c3b4be8c",
+      "install_path": "mlops/huggingface-hub",
+      "files": [
+        "SKILL.md"
+      ],
+      "metadata": {
+        "backfilled_from": "optional-skills"
+      },
+      "installed_at": "2026-09-01T06:24:38.157581+00:00",
+      "updated_at": "2026-09-01T06:24:38.157581+00:00"
+    },
+    "openhue": {
+      "source": "official",
+      "identifier": "official/smart-home/openhue",
+      "trust_level": "builtin",
+      "scan_verdict": "backfilled",
+      "content_hash": "sha256:177f4de2ef06e4d9",
+      "install_path": "smart-home/openhue",
+      "files": [
+        "SKILL.md"
+      ],
+      "metadata": {
+        "backfilled_from": "optional-skills"
+      },
+      "installed_at": "2026-09-01T06:24:38.200484+00:00",
+      "updated_at": "2026-09-01T06:24:38.200484+00:00"
+    },
+    "blogwatcher": {
+      "source": "official",
+      "identifier": "official/research/blogwatcher",
+      "trust_level": "builtin",
+      "scan_verdict": "backfilled",
+      "content_hash": "sha256:e4228c4386499c28",
+      "install_path": "research/blogwatcher",
+      "files": [
+        "SKILL.md"
+      ],
+      "metadata": {
+        "backfilled_from": "optional-skills"
+      },
+      "installed_at": "2026-09-06T09:00:16.973867+00:00",
+      "updated_at": "2026-09-06T09:00:16.973867+00:00"
+    },
+    "research-paper-writing": {
+      "source": "official",
+      "identifier": "official/research/research-paper-writing",
+      "trust_level": "builtin",
+      "scan_verdict": "backfilled",
+      "content_hash": "sha256:3da4c76daefd390e",
+      "install_path": "research/research-paper-writing",
+      "files": [
+        "SKILL.md",
+        "references/autoreason-methodology.md",
+        "references/checklists.md",
+        "references/citation-workflow.md",
+        "references/experiment-patterns.md",
+        "references/human-evaluation.md",
+        "references/paper-types.md",
+        "references/phase5-paper-drafting.md",
+        "references/reviewer-guidelines.md",
+        "references/sources.md",
+        "references/writing-guide.md",
+        "templates/README.md",
+        "templates/aaai2026/README.md",
+        "templates/aaai2026/aaai2026-unified-supp.tex",
+        "templates/aaai2026/aaai2026-unified-template.tex",
+        "templates/aaai2026/aaai2026.bib",
+        "templates/aaai2026/aaai2026.bst",
+        "templates/aaai2026/aaai2026.sty",
+        "templates/acl/README.md",
+        "templates/acl/acl.sty",
+        "templates/acl/acl_latex.tex",
+        "templates/acl/acl_lualatex.tex",
+        "templates/acl/acl_natbib.bst",
+        "templates/acl/anthology.bib.txt",
+        "templates/acl/custom.bib",
+        "templates/acl/formatting.md",
+        "templates/colm2025/README.md",
+        "templates/colm2025/colm2025_conference.bib",
+        "templates/colm2025/colm2025_conference.bst",
+        "templates/colm2025/colm2025_conference.pdf",
+        "templates/colm2025/colm2025_conference.sty",
+        "templates/colm2025/colm2025_conference.tex",
+        "templates/colm2025/fancyhdr.sty",
+        "templates/colm2025/math_commands.tex",
+        "templates/colm2025/natbib.sty",
+        "templates/iclr2026/fancyhdr.sty",
+        "templates/iclr2026/iclr2026_conference.bib",
+        "templates/iclr2026/iclr2026_conference.bst",
+        "templates/iclr2026/iclr2026_conference.pdf",
+        "templates/iclr2026/iclr2026_conference.sty",
+        "templates/iclr2026/iclr2026_conference.tex",
+        "templates/iclr2026/math_commands.tex",
+        "templates/iclr2026/natbib.sty",
+        "templates/icml2026/algorithm.sty",
+        "templates/icml2026/algorithmic.sty",
+        "templates/icml2026/example_paper.bib",
+        "templates/icml2026/example_paper.pdf",
+        "templates/icml2026/example_paper.tex",
+        "templates/icml2026/fancyhdr.sty",
+        "templates/icml2026/icml2026.bst",
+        "templates/icml2026/icml2026.sty",
+        "templates/icml2026/icml_numpapers.pdf",
+        "templates/neurips2025/Makefile",
+        "templates/neurips2025/extra_pkgs.tex",
+        "templates/neurips2025/main.tex",
+        "templates/neurips2025/neurips.sty"
+      ],
+      "metadata": {
+        "backfilled_from": "optional-skills"
+      },
+      "installed_at": "2026-09-06T09:00:17.542466+00:00",
+      "updated_at": "2026-09-06T09:00:17.542466+00:00"
     }
   }
 }

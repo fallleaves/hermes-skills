@@ -349,10 +349,10 @@ Canonical 6-item list, lockstepped with docs/unified-house-chat.md §8:
 
 - `Lease.paymentPlan` ∈ {'monthly', 'yearly', 'hybrid_first6'} (default
   'monthly'); `Lease.annualRent` = yearly amount in whole EUR (NULL →
-  monthlyRent*12). hybrid_first6 is a **12-month lease only**: months 1-6
-  paid monthly, months 7-12 PREPAID at contract start (due = 6×monthly,
-  dueDate = startDate). Never offer hybrid for a non-12-month lease (the
-  lease API rejects it) or an open-ended one.
+  monthlyRent*12). hybrid_first6 = any lease LONGER than 6 months: months
+  1-6 paid monthly, months 7..N (the back half) PREPAID at contract start
+  (due = (N-6)×monthly, dueDate = startDate). Never offer hybrid for a
+  lease of 6 months or less (the lease API rejects it) or an open-ended one.
 - **Recording** (new lease / lease edit, any channel): read the contract
   wording — "年付 / jaarlijks / yearly" → plan yearly (+ annualRent when the
   contract states a discounted amount), "前半年按月付、后半年预付" /

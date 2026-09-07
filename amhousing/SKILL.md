@@ -339,6 +339,14 @@ Canonical 6-item list, lockstepped with docs/unified-house-chat.md §8:
 
 ## Rent payment plans & status (2026-09, rent_calc.py)
 
+- **Plan changes (r163)**: the payment plan of the ACTIVE lease can be
+  changed ONLY before the first rent payment arrives (rent income entry
+  with date >= lease.startDate locks it; deposits never lock). The rent
+  window exposes the selector (PATCH /api/overview/rent/[houseId]); a
+  plan the agent would also update (contract renegotiation) follows the
+  same rule — never change paymentPlan/annualRent in the DB once rent
+  was received for the contract window.
+
 - `Lease.paymentPlan` ∈ {'monthly', 'yearly', 'hybrid_first6'} (default
   'monthly'); `Lease.annualRent` = yearly amount in whole EUR (NULL →
   monthlyRent*12). hybrid_first6 is a **12-month lease only**: months 1-6

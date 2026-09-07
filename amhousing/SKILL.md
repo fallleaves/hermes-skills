@@ -133,8 +133,10 @@ then act.
   model's status field if it has one) + HouseEvent; never hard-delete an asset
   the owner described — history matters.
 - **Lease lifecycle** (renewal, rent increase, move-out, deposit return) →
-  update Lease (status/endDate/monthlyRent); a returned deposit is an
-  EXPENSE ledger entry; a rent increase also updates monthlyRent + HouseEvent.
+  update Lease (status/endDate/monthlyRent; **deposit** — the agreed whole-EUR
+  amount from the contract wording, r162); a returned deposit is an
+  EXPENSE ledger entry (category 'deposit'); a rent increase also updates
+  monthlyRent + HouseEvent.
 - **Repair quote / contractor booking** ("plumber quoted €450", "contractor
   coming Friday") → record cost/contractor/date on the open MaintenanceRecord;
   this is partial progress — do NOT close the work order (r113).

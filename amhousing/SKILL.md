@@ -219,6 +219,17 @@ etc. through the UI. Processing contract:
   startedAt/completedAt too). A task left `pending` stays in the queue.
 - Scope: only the house bound to the task's `houseId`.
 
+## Rent window (UI recorded receipts)
+
+The owner can record rent receipts from the overview rent tab
+(`/overview/rent/[houseId]`, POST `/api/overview/rent/[houseId]`). The
+UI writes: HouseLedgerEntry (type='INCOME', category='rent', amount CENTS,
+date) + a linked HouseEvent (type='INCOME', createdByType='owner',
+createdByModel='rent-window', structured {type:'rent_receipt', amountCents,
+date}). When the owner says they recorded a payment in the app, do NOT
+double-write — the ledger entry already exists; answer from it. Rent math
+stays in rent_calc.py (shared via src/lib/rentView.ts).
+
 ## Test pitfalls (vitest)
 
 - jsdom `fireEvent.click` never submits forms — use `userEvent`.

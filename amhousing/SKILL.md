@@ -39,7 +39,7 @@ channel — one conversation per owner covering ALL of their houses.
 Pipeline (claim-mode dump): `python3 /home/jfeng/projects/amhousing/scripts/process_unified_message.py`
 — CLAIM the oldest eligible user message + dump conversation tail + the
 owner's HOUSE CATALOG (`{id, displayName, address, city, postcode,
-propertyType, energyLabel, archived}` per house; displayName from the
+propertyType, energyLabel, archived, isRental}` per house; displayName from the
 Listing title chain in the message's language, fallback address; archived
 houses stay IN the catalog with their flag). Status: `message_claimed` |
 `no_pending_messages`. Per-house context AFTER scope resolution (never
@@ -72,8 +72,11 @@ Processing protocol (per message):
    resolved exactly one house, no newer mention switched it) follow-ups
    inherit that scope ONLY IF the reply states the assumption explicitly
    ("About the fridge at <displayName / address>…"). Two+ plausible matches
-   → pick list, never process both. Nicknames/pronouns ("my house", "出租房")
-   are unresolvable (no nickname field) → ask. Explicit management command
+   → pick list, never process both. OWNERSHIP PRONOUNS are resolvable via
+   the catalog's `isRental` flag: "出租房"/"the rental(s)" → the isRental=true
+   houses; "我家"/"自住房"/"my own home" → the isRental=false house(s).
+   Other nicknames/pronouns ("my house") are unresolvable (no nickname field)
+   → ask. Explicit management command
    ("all houses", "summarize") → cross-house aggregation. House not in
    catalog → refuse and explain.
 2. PER RESOLVED HOUSE fetch detailed context FIRST (post-resolution,

@@ -23,3 +23,8 @@ __pycache__/
 
 # Hermes runtime usage tracking (auto-updated on every skill load)
 .usage.json
+
+# Runtime/temp state - never push
+.usage.json.lock
+.curator_ledger.jsonl
+.hub/audit.log

@@ -219,6 +219,17 @@ etc. through the UI. Processing contract:
   startedAt/completedAt too). A task left `pending` stays in the queue.
 - Scope: only the house bound to the task's `houseId`.
 
+## Test pitfalls (vitest)
+
+- jsdom `fireEvent.click` never submits forms — use `userEvent`.
+- Mock `next/navigation` with STABLE objects: `useRouter: () => mockRouter` /
+  `useParams: () => mockParams` (module-level consts). A fresh object per
+  call re-triggers every effect that depends on `router`/`params.id` on each
+  render → infinite fetch loop that silently resets form state (r152 lesson:
+  a select's state kept reverting until the mocks were made stable).
+- Populate ALL required form fields before submitting a form in tests —
+  native constraint validation blocks the submit event in jsdom.
+
 ## Rules
 - **Infer first**: for every message, run the Role-section inference checklist
   and decision ladder before applying the rules below.

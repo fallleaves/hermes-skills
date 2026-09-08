@@ -243,13 +243,6 @@ stays in rent_calc.py (shared via src/lib/rentView.ts).
 - Populate ALL required form fields before submitting a form in tests —
   native constraint validation blocks the submit event in jsdom.
 
-## Ship immediately (standing user rule, 2026-09)
-
-Every completed & verified feature/fix in the amhousing repo is committed
-and pushed IMMEDIATELY — never wait for a "commit and push" instruction.
-The GHA deploy auto-ships on push; monitor the run until green and report
-commit + deploy result in the same message as the feature summary.
-
 ## Rules
 - **Infer first**: for every message, run the Role-section inference checklist
   and decision ladder before applying the rules below.

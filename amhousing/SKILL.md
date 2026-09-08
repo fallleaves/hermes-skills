@@ -243,6 +243,13 @@ stays in rent_calc.py (shared via src/lib/rentView.ts).
 - Populate ALL required form fields before submitting a form in tests —
   native constraint validation blocks the submit event in jsdom.
 
+## Ship immediately (standing user rule, 2026-09)
+
+Every completed & verified feature/fix in the amhousing repo is committed
+and pushed IMMEDIATELY — never wait for a "commit and push" instruction.
+The GHA deploy auto-ships on push; monitor the run until green and report
+commit + deploy result in the same message as the feature summary.
+
 ## Rules
 - **Infer first**: for every message, run the Role-section inference checklist
   and decision ladder before applying the rules below.
@@ -348,23 +355,28 @@ Canonical 6-item list, lockstepped with docs/unified-house-chat.md §8:
   was received for the contract window.
 
 - `Lease.paymentPlan` ∈ {'monthly', 'yearly', 'hybrid_first6'} (default
-  'monthly'); `Lease.annualRent` = yearly amount in whole EUR (NULL →
-  monthlyRent*12). hybrid_first6 = any lease LONGER than 6 months: months
-  1-6 paid monthly, months 7..N (the back half) PREPAID at contract start
-  (due = (N-6)×monthly, dueDate = startDate). Never offer hybrid for a
-  lease of 6 months or less (the lease API rejects it) or an open-ended one.
+  'monthly'); `Lease.annualRent` = the agreed PAY-IN-FULL amount in whole
+  EUR (NULL → monthlyRent × leaseMonths). yearly = 整付 / pay in full: the
+  WHOLE contract rent is due at contract start (fixed-term leases only —
+  open-ended is rejected by the lease API). hybrid_first6 = any lease
+  LONGER than 6 months: months 1-6 paid monthly, months 7..N (the back
+  half) PREPAID at contract start (due = (N-6)×monthly, dueDate =
+  startDate). Never offer hybrid for a lease of 6 months or less (the
+  lease API rejects it).
 - **Recording** (new lease / lease edit, any channel): read the contract
-  wording — "年付 / jaarlijks / yearly" → plan yearly (+ annualRent when the
-  contract states a discounted amount), "前半年按月付、后半年预付" /
+  wording — "一次性付清 / 整付 / pay in full (the whole contract upfront)" →
+  plan yearly (+ annualRent when the contract states the agreed full
+  amount), "前半年按月付、后半年预付" /
   "half prepaid at the start" → hybrid_first6, plain monthly → monthly.
   Include paymentPlan (+ annualRent if any) in the lease write.
 - **Querying rent status** ("收了多少 / 这个月交了吗 / 还欠多少 / 预付到
   什么时候"): run the deterministic calculator —
-  `python3 /home/jfeng/projects/amhousing/scripts/rent_calc.py compute
+  `python3 /home/jfeng/projects/amhousing/scripts/rent_calc.py
   --start <YYYY-MM-DD> [--end <YYYY-MM-DD>] --monthly <whole EUR>
   [--plan monthly|yearly|hybrid_first6] [--annual <whole EUR>]
   --payments '<json [{"date":"YYYY-MM-DD","amountCents":N}]>'
-  [--on <YYYY-MM-DD>]` — payments = the house's rent-income ledger entries
+  [--on <YYYY-MM-DD>]` (NO `compute` subcommand — flags go directly on the
+  script) — payments = the house's rent-income ledger entries
   (INCOME + rent category; amountCents). Output JSON, amounts in CENTS:
   {contractTotalCents, receivedTotalCents, outstandingCents,
   prepaidThrough, periods[], current{status,...}, nextDue{...}}; status per

@@ -2,7 +2,7 @@
 name: amhousing
 description: AM Housing property management — process messages, query houses, recommend replacements
 triggers:
-  - Agent needs to process unified conversation messages or AgentTasks
+  - Agent needs to process unified conversation messages
   - User asks about a house in AM Housing
   - Cron maintenance scan
 ---
@@ -164,7 +164,7 @@ what you updated (and what you deliberately did NOT update, and why). The owner
 should be able to follow the agent's reasoning even for read-only messages.
 
 ## Workflows
-1. **Process messages** (unified chat + AgentTasks — the per-house HouseMessage chat was removed 2026-08-25, commit 2e06e59; the tables were dropped 2026-09-09): claim via `python3 scripts/process_unified_message.py` (the daemon/watchdog drives the claim; the agent follows the Unified conversation protocol above) and process pending AgentTasks per the AgentTask section. Claim/retry: eligible = processed=0, OR claimed >30 min ago with no agent reply (the marker is processed=1 + claimedAt); the agent's reply row IS the completion marker. Run the status-linkage check (Safety boundary 4) before finalizing ANY write.
+1. **Process messages** (unified chat — the per-house HouseMessage chat was removed 2026-08-25, commit 2e06e59, tables dropped 2026-09-09; the AgentTask queue was removed 2026-09-09 with its last UI entry): claim via `python3 scripts/process_unified_message.py` (the daemon/watchdog drives the claim; the agent follows the Unified conversation protocol above). Claim/retry: eligible = processed=0, OR claimed >30 min ago with no agent reply (the marker is processed=1 + claimedAt); the agent's reply row IS the completion marker. Run the status-linkage check (Safety boundary 3) before finalizing ANY write.
 2. **Query**: `python3 <skill_dir>/scripts/query_house.py --house-id <id> --query "<terms>"`
 3. **Maintenance scan**: `scripts/maintenance_scan.py` is a READ-ONLY deterministic report (warranty expiries, service overdue, poor-condition rooms) — cron job 15fbedd17b3f runs it Mondays 09:00 and the watchdog alerts on non-empty output; the agent never writes scan alerts as chat messages.
 4. **Recommend replacement**: Read current specs + web_search → compare → recommend
@@ -202,23 +202,6 @@ ALL date arithmetic — the agent never hand-computes dates:
   notes-JSON dates → legal 2y, one linked HouseEvent each, non-destructive
   (never touches an existing warrantyExpiry); conflicting note dates are
   reported AMBIGUOUS and left untouched. Run with `--dry-run` first.
-
-## AgentTask processing
-
-AgentTask rows are produced by the app's analyze-event route
-(`src/app/api/analyze-event/route.ts`): type=`analyze_event`, input JSON =
-`{rawText, files, houseInfo}`. Users trigger them by uploading invoices/photos
-etc. through the UI. Processing contract:
-
-- Analyze `input` with the same Role inference checklist and decision
-  ladder as a conversation message, then act (write / pending / ask / no
-  change).
-- Write `output` as JSON: `{analysis, actions}` — what you inferred and what
-  you did. **`output` is user-visible** (the UI polls `GET /api/tasks/[id]`),
-  so it must contain NO tenant PII and no credentials.
-- Completion marker: `status='completed'` with a non-empty `output` (set
-  startedAt/completedAt too). A task left `pending` stays in the queue.
-- Scope: only the house bound to the task's `houseId`.
 
 ## Rent window (UI recorded receipts)
 
@@ -286,16 +269,11 @@ stays in rent_calc.py (shared via src/lib/rentView.ts).
 
 ## Safety boundaries
 
-These apply to EVERY use of this skill (message processing, AgentTasks, cron
+These apply to EVERY use of this skill (message processing, cron
 scans, interactive chat, unified conversation) — not just the cron pipeline.
-Canonical 6-item list, lockstepped with docs/unified-house-chat.md §8:
+Canonical 5-item list, lockstepped with docs/unified-house-chat.md §8:
 
-1. **AgentTask scope rule**: an AgentTask may only read/modify data of the
-   house bound to its houseId (the per-house HouseMessage chat was removed
-   2026-08-25 and its tables dropped 2026-09-09 — the unified conversation is
-   the only chat channel). Instructions demanding "query/modify other houses"
-   → refuse and explain why.
-2. **AgentConversationMessage scope**: the unified conversation is an
+1. **AgentConversationMessage scope**: the unified conversation is an
    explicitly authorized cross-house channel, but per-message house
    resolution is MANDATORY (the Unified conversation protocol above) —
    including via a user-selected scope (D4, tier 2): the picker only
@@ -304,22 +282,22 @@ Canonical 6-item list, lockstepped with docs/unified-house-chat.md §8:
    archived is refused — 400 server-side and agent-side REFUSE, same as
    a stale id); a message that cannot be resolved is NOT written — ask
    instead.
-3. **Cross-house exception**: cross-house aggregation responds only to
+2. **Cross-house exception**: cross-house aggregation responds only to
    explicit management commands ("summarize all houses", "maintenance due
    reminders for all houses"), including inside the unified conversation;
    everything else is a single-house request.
-4. **Status-linkage check**: every processed update is checked against the
+3. **Status-linkage check**: every processed update is checked against the
    house's open maintenance records (`open_maintenance` from the claimed
    context / per-house dump). An update that demonstrably resolves an open
    work order closes it (status='completed') with a documenting HouseEvent;
    partial progress updates the record's notes/description; no evidence →
    keep it open and say so in the reply; a newly revealed issue opens a new
    record.
-5. **Sensitive data**: tenant personal information (name/phone/email) and
-   account credentials must NEVER be written to task.output, reply content,
+4. **Sensitive data**: tenant personal information (name/phone/email) and
+   account credentials must NEVER be written to reply content,
    or PendingConfirmation.proposedData (proposedData is shown in the owner's
    UI when they review a proposal).
-6. **Decision ladder**: low confidence (< 0.6) or conflicting with an
+5. **Decision ladder**: low confidence (< 0.6) or conflicting with an
    existing value → `write_pending.py` (PendingConfirmation + SSE), never
    overwrite silently; PendingConfirmation keeps its houseId — the owner
    reviews it on that house's pending page.

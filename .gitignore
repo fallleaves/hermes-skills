@@ -27,4 +27,4 @@ __pycache__/
 # Runtime/temp state - never push
 .usage.json.lock
 .curator_ledger.jsonl
-.hub/audit.log
+.hub/

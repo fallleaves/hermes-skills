@@ -347,33 +347,37 @@ Canonical 6-item list, lockstepped with docs/unified-house-chat.md §8:
   same rule — never change paymentPlan/annualRent in the DB once rent
   was received for the contract window.
 
-- `Lease.paymentPlan` ∈ {'monthly', 'yearly', 'hybrid_first6'} (default
+- `Lease.paymentPlan` ∈ {'monthly', 'yearly', 'hybrid_last6'} (default
   'monthly'); `Lease.annualRent` = the agreed PAY-IN-FULL amount in whole
-  EUR (NULL → monthlyRent × leaseMonths). yearly = 整付 / pay in full: the
+  EUR (NULL → monthlyRent × leaseMonths); `Lease.firstMonthRent` (r175) = a
+  promotional first-month whole EUR (NULL = same as monthlyRent — rent_calc
+  --first-month). yearly = 整付 / pay in full: the
   WHOLE contract rent is due at contract start (fixed-term leases only —
-  open-ended is rejected by the lease API). hybrid_first6 = any lease
-  LONGER than 6 months: months 1-6 paid monthly, months 7..N (the back
-  half) PREPAID at contract start (due = (N-6)×monthly, dueDate =
-  startDate). Never offer hybrid for a lease of 6 months or less (the
+  open-ended is rejected by the lease API). hybrid_last6 (半年付) = any lease
+  LONGER than 6 months: the FIRST N-6 months paid monthly, the LAST 6 months
+  prepaid as ONE block due when the block's window starts (dueDate = start of
+  month N-5, due = 6×monthly). Never offer hybrid for a lease of 6 months or less (the
   lease API rejects it).
 - **Recording** (new lease / lease edit, any channel): read the contract
   wording — "一次性付清 / 整付 / pay in full (the whole contract upfront)" →
   plan yearly (+ annualRent when the contract states the agreed full
   amount), "前半年按月付、后半年预付" /
-  "half prepaid at the start" → hybrid_first6, plain monthly → monthly.
+  "half prepaid at the start" → hybrid_last6, plain monthly → monthly.
   Include paymentPlan (+ annualRent if any) in the lease write.
 - **Querying rent status** ("收了多少 / 这个月交了吗 / 还欠多少 / 预付到
   什么时候"): run the deterministic calculator —
   `python3 /home/jfeng/projects/amhousing/scripts/rent_calc.py
   --start <YYYY-MM-DD> [--end <YYYY-MM-DD>] --monthly <whole EUR>
-  [--plan monthly|yearly|hybrid_first6] [--annual <whole EUR>]
+  [--plan monthly|yearly|hybrid_last6] [--annual <whole EUR>] [--first-month <whole EUR>]
   --payments '<json [{"date":"YYYY-MM-DD","amountCents":N}]>'
   [--on <YYYY-MM-DD>]` (NO `compute` subcommand — flags go directly on the
   script) — payments = the house's rent-income ledger entries
   (INCOME + rent category; amountCents). Output JSON, amounts in CENTS:
-  {contractTotalCents, receivedTotalCents, outstandingCents,
+  {contractTotalCents, receivedTotalCents, outstandingCents, overdueCents,
   prepaidThrough, periods[], current{status,...}, nextDue{...}}; status per
-  period: paid | partial | overdue | upcoming. NEVER hand-compute rent math.
+  period: paid | partial | overdue | upcoming. outstandingCents = whole
+  remaining contract (NOT debt today); overdueCents = what is actually
+  past-due unpaid — the 缺口 the owner sees. NEVER hand-compute rent math.
 
 ## Advanced Workflows
 

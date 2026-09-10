@@ -203,6 +203,39 @@ ALL date arithmetic — the agent never hand-computes dates:
   (never touches an existing warrantyExpiry); conflicting note dates are
   reported AMBIGUOUS and left untouched. Run with `--dry-run` first.
 
+## Schema migrations (live DB) — the proven path
+
+`prisma migrate dev` refuses non-interactive terminals, and the live DB is held
+by the running next-server, so ANY engine write step fails with
+`database is locked` (its first write ignores busy_timeout). Do this instead:
+
+1. Hand-write `prisma/migrations/<YYYYMMDDHHMMSS>_<name>/migration.sql`.
+2. Verify the SQL really equals the schema:
+   `npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url file:/tmp/shadow.db --script`
+   → must print "This is an empty migration."
+3. Rehearse the deploy on a COPY: `cp prisma/amhousing.db /tmp/t.db` then
+   `DATABASE_URL=file:/tmp/t.db npx prisma migrate deploy`.
+4. Apply to the LIVE db without stopping the app: exec the migration.sql
+   verbatim in one transaction and INSERT the `_prisma_migrations` row
+   (`checksum` = sha256 of the file's RAW BYTES, `applied_steps_count`=1,
+   `started_at`/`finished_at` as ISO `YYYY-MM-DDTHH:MM:SS.000Z`). Then
+   `npx prisma migrate status` must say "Database schema is up to date!" —
+   that is the check that the row is right.
+5. `npx prisma generate`.
+
+⚠️ The GHA deploy will NOT apply your migration when you push from the deploy
+host itself: `PREV_HEAD` is captured in the same working copy, so
+`git diff PREV_HEAD HEAD` is empty → `HAS_NEW_MIGRATIONS=no` → migrate is
+skipped. Always confirm the row landed (`migrate status`), never assume the
+green deploy applied it.
+
+⚠️ Drift blocks ALL future migrations: if `_prisma_migrations` holds a row whose
+directory no longer exists in `prisma/migrations`, `migrate deploy` refuses
+("migration history differs"). Check with
+`comm -23 <(db names) <(repo dirs)`; if `migrate diff` above is empty (recorded
+history == schema), the orphan rows are bookkeeping leftovers and can be
+deleted in a transaction — after a backup.
+
 ## Rent window (UI recorded receipts)
 
 The owner can record rent receipts from the overview rent tab

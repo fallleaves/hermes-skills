@@ -61,6 +61,14 @@ tool_call`) — present in 4 of 8 measured turns. With `enabled: 'off'` the sche
 and both symptoms vanish (measured: 0 tool_search/tool_call lines for a whole turn). A from-scratch
 provision of the profile must re-apply this key.
 
+**Rent/lease reads (added 2026-09-11).** `house` with no id now returns `monthlyRentEuros` per
+house plus a server-computed `totals.monthlyRentEuros` / `housesWithActiveLease`; a per-house dump
+carries `lease` (ACTIVE lease, `…Euros` fields) and `ledger_recent` (`amountCents`). Never sum rent
+by hand — use the total. Unit rule, because the schema mixes them and the app's own comments warn
+about it: `Lease.monthlyRent` + `MaintenanceRecord.cost` = whole EUROS, `HouseLedgerEntry.amount` =
+CENTS; the field names carry the unit. An ENDED lease is not income (`monthlyRentEuros: null`), and
+tenant email/phone are deliberately not exposed.
+
 **`op=house` with no `houseId` returns the user's house CATALOG** (fixed 2026-09-11) — ids,
 addresses, listing display names, `archived`/`isRental` flags — so the agent never has to guess an
 id; an empty catalog is terminal ("no houses") and a malformed id still 400s while a foreign id

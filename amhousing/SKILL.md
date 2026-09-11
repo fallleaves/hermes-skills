@@ -65,7 +65,13 @@ provision of the profile must re-apply this key.
 test the pipeline, wait for that session's `Turn ended:` line in the log before deleting the rows.
 Waiting only for the reply row is too early — the model can keep calling tools after writing it, and
 deleting the token mid-turn yields `token_unknown` / `conversation_disabled` 401s that are YOUR
-probe's artifact, not a product defect. The business rules below (inference checklist, decision ladder, safety
+probe's artifact, not a product defect.
+
+**An empty history search is load-bearing (do not remove):** `searchHistory()` attaches
+`NO_MATCH_NOTE` when a real search finds nothing and `REJECTED_QUERY_NOTE` when the query never ran
+(blank / over the cap), and NO note when there are hits. A bare `{results: []}` made the model
+re-query synonyms until it burned 17 API calls in one turn; with the note it issues its keyword
+variants in one call and answers (measured 17 -> 6 calls, 74 s -> 34 s). The business rules below (inference checklist, decision ladder, safety
 boundaries, warranty/rent math, scope resolution) remain CANONICAL for both
 planes; the maintenance/cron scripts remain valid for the owner's own
 Telegram/CLI/operator sessions.

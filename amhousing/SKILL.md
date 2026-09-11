@@ -61,6 +61,11 @@ tool_call`) — present in 4 of 8 measured turns. With `enabled: 'off'` the sche
 and both symptoms vanish (measured: 0 tool_search/tool_call lines for a whole turn). A from-scratch
 provision of the profile must re-apply this key.
 
+**`op=house` with no `houseId` returns the user's house CATALOG** (fixed 2026-09-11) — ids,
+addresses, listing display names, `archived`/`isRental` flags — so the agent never has to guess an
+id; an empty catalog is terminal ("no houses") and a malformed id still 400s while a foreign id
+still 403s. Same pattern as the search note: an empty result must say so and say "stop".
+
 **Probe hygiene (learned the hard way):** when you inject a synthetic user/conversation/message to
 test the pipeline, wait for that session's `Turn ended:` line in the log before deleting the rows.
 Waiting only for the reply row is too early — the model can keep calling tools after writing it, and

@@ -28,3 +28,5 @@ __pycache__/
 .usage.json.lock
 .curator_ledger.jsonl
 .hub/
+# skills_sync rewrites this on every bundled-skill sync (skill_name:origin_hash)
+.bundled_manifest

@@ -41,13 +41,15 @@ data ONLY through the `amhousing` tool, which calls the app's scoped agent API
 with a per-conversation token injected from an in-process registry (never from
 the model). Wherever this skill says "run python3 scripts/..." or "INSERT/
 UPDATE the DB", the app-chat agent must use the tool instead:
-`op: "house"` (per-house context) · `op: "write"` (`{op, payload}` for event /
-maintenance / ledger / fixture / furniture / system / item / window / outdoor /
-house / lease) · `op: "pending"` (low confidence / conflict) · `op: "reply"`
+`op: "house"` (per-house context) · `op: "write"` (flat: `{writeOp, ...fields}` — `event.create`, `maintenance.create/update`, `ledger.create`, `fixture.upsert`, `furniture.upsert`, `system.upsert`, `item.upsert`, `window.upsert`, `outdoor.upsert`, `house.update`, `lease.update`; a write without `writeOp` is refused, never guessed) · `op: "pending"` (low confidence / conflict) · `op: "reply"`
 (THE completion marker: `{content, scopeHouseIds, eventId?, fileUrls?}` — the
 message is bound server-side) · `op: "search"` (that user's own history) ·
 `op: "file"` (archive a staged upload) · `op: "notify"` (after a successful
-reply). The business rules below (inference checklist, decision ladder, safety
+reply). **Pass the fields FLAT at the top level of the arguments** (the nested
+`payload` shape also still resolves); identity fields are never sent — the
+adapter injects them. `scripts/turn_metrics.py` prints per-turn api calls, tool
+calls, tokens and the slowest call — run it before optimising latency (real
+turns: latency tracks input tokens + provider variance, NOT tool discovery). The business rules below (inference checklist, decision ladder, safety
 boundaries, warranty/rent math, scope resolution) remain CANONICAL for both
 planes; the maintenance/cron scripts remain valid for the owner's own
 Telegram/CLI/operator sessions.
@@ -56,9 +58,10 @@ The owner's unified chat (`/my-houses/chat`, `AgentConversation` +
 `AgentConversationMessage` tables) is an explicitly authorized CROSS-HOUSE
 channel — one conversation per owner covering ALL of their houses.
 
-Pipeline (claim-mode dump): `python3 /home/jfeng/projects/amhousing/scripts/process_unified_message.py`
-— CLAIM the oldest eligible user message + dump conversation tail + the
-owner's HOUSE CATALOG (`{id, displayName, address, city, postcode,
+Pipeline — RETIRED (2026-09-11): the claim/dump script no longer exists; the
+app-profile gateway adapter claims messages and injects the same context. Kept
+below only to document the shape of that context dump: it CLAIMED the oldest
+eligible user message + dumped the conversation tail + the owner's HOUSE CATALOG (`{id, displayName, address, city, postcode,
 propertyType, energyLabel, archived, isRental}` per house; displayName from the
 Listing title chain in the message's language, fallback address; archived
 houses stay IN the catalog with their flag). Status: `message_claimed` |

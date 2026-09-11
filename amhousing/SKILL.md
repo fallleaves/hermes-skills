@@ -31,6 +31,27 @@ returned `skill_dir` field, then run `<skill_dir>/scripts/<script>.py`.
 
 ## Unified conversation (agent chat)
 
+⚠️ RUNTIME (2026-09-10 cutover): the app chat is served by the gateway PLATFORM
+ADAPTER in the dedicated `amhousing-app` profile (systemd
+`hermes-gateway-amhousing-app.service`); the old daemon pipeline
+(`amhousing-message-agent` + `hermes -z` + `process_unified_message.py`) is
+STOPPED and disabled. In that profile the agent has NO shell — no terminal, no
+file, no code execution, no session_search, no memory — and reaches business
+data ONLY through the `amhousing` tool, which calls the app's scoped agent API
+with a per-conversation token injected from an in-process registry (never from
+the model). Wherever this skill says "run python3 scripts/..." or "INSERT/
+UPDATE the DB", the app-chat agent must use the tool instead:
+`op: "house"` (per-house context) · `op: "write"` (`{op, payload}` for event /
+maintenance / ledger / fixture / furniture / system / item / window / outdoor /
+house / lease) · `op: "pending"` (low confidence / conflict) · `op: "reply"`
+(THE completion marker: `{content, scopeHouseIds, eventId?, fileUrls?}` — the
+message is bound server-side) · `op: "search"` (that user's own history) ·
+`op: "file"` (archive a staged upload) · `op: "notify"` (after a successful
+reply). The business rules below (inference checklist, decision ladder, safety
+boundaries, warranty/rent math, scope resolution) remain CANONICAL for both
+planes; the maintenance/cron scripts remain valid for the owner's own
+Telegram/CLI/operator sessions.
+
 The owner's unified chat (`/my-houses/chat`, `AgentConversation` +
 `AgentConversationMessage` tables) is an explicitly authorized CROSS-HOUSE
 channel — one conversation per owner covering ALL of their houses.

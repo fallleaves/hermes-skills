@@ -83,6 +83,18 @@ The nudge carries no `amhousing` raw_message marker, so it can never nudge itsel
 new "completion" op, file it in the same ledger or the safety net will nudge a turn that already
 finished its job.
 
+**Slash commands do NOT work from the app chat (2026-09-11).** The adapter prepends its `SCOPE:`
+header to every admitted message, so `MessageEvent.is_command()`
+(`(text or "").lstrip().startswith("/")`, `gateway/platforms/event.py:90-92`) never matches: `/new`
+reaches the agent as ordinary CONTENT (it answered it politely and charged a full turn). Reset a
+conversation the operator way (above) — do not expect `/new` typed in the app to rotate anything.
+
+**The SCOPE header carries the app picker's selection (three lines now).**
+`SCOPE: userId=…; conversationType=unified` / `houseCatalogIds=[…]` / `userSelectedHouseIds=[…]`
+(D4 tier 2; `[]` = nothing picked). Keep them separate: a flattened `houseIds` list made the app
+chat ask "which house?" for a message whose house the owner had ALREADY selected in the picker
+(observed live 2026-09-11, fixed by carrying `message.userScopeHouseIds` through `_deliver`).
+
 **Probe hygiene (learned the hard way):** when you inject a synthetic user/conversation/message to
 test the pipeline, wait for that session's `Turn ended:` line in the log before deleting the rows.
 Waiting only for the reply row is too early — the model can keep calling tools after writing it, and

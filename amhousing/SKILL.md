@@ -41,7 +41,7 @@ data ONLY through the `amhousing` tool, which calls the app's scoped agent API
 with a per-conversation token injected from an in-process registry (never from
 the model). Wherever this skill says "run python3 scripts/..." or "INSERT/
 UPDATE the DB", the app-chat agent must use the tool instead:
-`op: "house"` (per-house context) · `op: "write"` (flat: `{writeOp, ...fields}` — `event.create`, `maintenance.create/update`, `ledger.create`, `fixture.upsert`, `furniture.upsert`, `system.upsert`, `item.upsert`, `window.upsert`, `outdoor.upsert`, `house.update`, `lease.update`; a write without `writeOp` is refused, never guessed) · `op: "pending"` (low confidence / conflict) · `op: "reply"`
+`op: "house"` (per-house context) · `op: "write"` (flat: `{writeOp, ...fields}` — `event.create`, `maintenance.create/update`, `ledger.create`, `fixture.upsert`, `furniture.upsert`, `system.upsert`, `item.upsert`, `window.upsert`, `outdoor.upsert`, `door.upsert`, `room.update`, `house.update`, `lease.update`; a write without `writeOp` is refused, never guessed) · `op: "pending"` (low confidence / conflict) · `op: "reply"`
 (THE completion marker: `{content, scopeHouseIds, eventId?, fileUrls?}` — the
 message is bound server-side) · `op: "search"` (that user's own history) ·
 `op: "file"` (archive a staged upload) · `op: "notify"` (after a successful
@@ -94,6 +94,19 @@ conversation the operator way (above) — do not expect `/new` typed in the app 
 (D4 tier 2; `[]` = nothing picked). Keep them separate: a flattened `houseIds` list made the app
 chat ask "which house?" for a message whose house the owner had ALREADY selected in the picker
 (observed live 2026-09-11, fixed by carrying `message.userScopeHouseIds` through `_deliver`).
+
+**Doors — a room's own door vs the house's front door (added 2026-09-11).** A Room carries exactly
+ONE door in its own columns (`doorType`, `doorMaterial`, `doorThickness/Width/Height`, `doorOpening`,
+`doorFrame`, `hingeType`, `hingeCount`, `lockType`, `lockBackset`) — write them with
+`room.update {roomId, …}`. Openings that belong to NO room (前门/入户门, back/side/garage/gate) were
+unrepresentable before: they are now the house-level `HouseDoor` entity —
+`door.upsert {houseId, name, type:'front'|'back'|'side'|'garage'|'gate'|'interior'|'other', …}`,
+deduped by houseId+name — and `event.create` accepts `doorId` to file a change against a door. The
+per-house dump now returns `doors`, `systems` (appliances incl. a smart lock — `system.upsert`,
+`roomId: null` = house-level) and `windows`, plus each room's door columns. Migration:
+`20260911230000_add_house_doors`. A smart lock's BATTERY is a service interval, so record the lock as
+a system (`system.upsert` + `lastServiceMs`/`serviceIntervalMonths`) and put the door itself in
+`door.upsert` — do not model the device as a door field.
 
 **Probe hygiene (learned the hard way):** when you inject a synthetic user/conversation/message to
 test the pipeline, wait for that session's `Turn ended:` line in the log before deleting the rows.

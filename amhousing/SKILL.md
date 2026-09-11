@@ -22,7 +22,7 @@ remaining helper scripts live in this skill's own `scripts/` directory.
 NEVER hardcode a profile path like `~/.hermes/profiles/<name>/skills/...`.
 Resolve the skill dir at runtime: call `skill_view(name='amhousing')` and use the
 returned `skill_dir` field, then run `<skill_dir>/scripts/<script>.py`.
-- `process_unified_message.py` — CLAIM one unread AgentConversationMessage + dump house catalog (repo copy; also `--house-id <id>` per-house context mode — see the Unified conversation section)
+- `process_unified_message.py` / `message_watchdog.py` — RETIRED and DELETED (2026-09-11). The app chat is served by the gateway adapter; use the `amhousing` tool (see the runtime block in the Unified conversation section). The deeper lookups below stay for the owner/operator plane.
 - `upsert_fixture.py` — deduplicate + write RoomFixture with version history (stdin-JSON kwargs interface — see Rules; does NOT write the HouseEvent)
 - `query_house.py` — search across Room, RoomFixture, RoomFurniture, HouseSystem (also `--scan-warranties`)
 - `write_pending.py` — park a low-confidence/conflicting update as PendingConfirmation + SSE-notify the owner
@@ -185,7 +185,7 @@ what you updated (and what you deliberately did NOT update, and why). The owner
 should be able to follow the agent's reasoning even for read-only messages.
 
 ## Workflows
-1. **Process messages** (unified chat — the per-house HouseMessage chat was removed 2026-08-25, commit 2e06e59, tables dropped 2026-09-09; the AgentTask queue was removed 2026-09-09 with its last UI entry): claim via `python3 scripts/process_unified_message.py` (the daemon/watchdog drives the claim; the agent follows the Unified conversation protocol above). Claim/retry: eligible = processed=0, OR claimed >30 min ago with no agent reply (the marker is processed=1 + claimedAt); the agent's reply row IS the completion marker. Run the status-linkage check (Safety boundary 3) before finalizing ANY write.
+1. **Process messages** (unified chat — the per-house HouseMessage chat was removed 2026-08-25, commit 2e06e59, tables dropped 2026-09-09; the AgentTask queue was removed 2026-09-09 with its last UI entry): the APP chat runs through the gateway adapter in the `amhousing-app` profile — the agent claims nothing itself and uses the `amhousing` tool for every read/write (runtime block above). Claim/retry semantics are unchanged and server-side: eligible = processed=0, OR claimed >30 min ago with no agent reply (the marker is processed=1 + claimedAt); the agent's reply row (written by the adaptor's `op: "reply"`) IS the completion marker. Run the status-linkage check (Safety boundary 3) before finalizing ANY write.
 2. **Query**: `python3 <skill_dir>/scripts/query_house.py --house-id <id> --query "<terms>"`
 3. **Maintenance scan**: `scripts/maintenance_scan.py` is a READ-ONLY deterministic report (warranty expiries, service overdue, poor-condition rooms) — cron job 15fbedd17b3f runs it Mondays 09:00 and the watchdog alerts on non-empty output; the agent never writes scan alerts as chat messages.
 4. **Recommend replacement**: Read current specs + web_search → compare → recommend

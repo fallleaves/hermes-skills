@@ -66,6 +66,15 @@ addresses, listing display names, `archived`/`isRental` flags — so the agent n
 id; an empty catalog is terminal ("no houses") and a malformed id still 400s while a foreign id
 still 403s. Same pattern as the search note: an empty result must say so and say "stop".
 
+**A turn that ends without `op=reply` is now self-healing (2026-09-11).** The app renders only
+reply rows, so prose alone reaches nobody. The adapter's `on_processing_complete` sees an admitted
+message whose turn ended SUCCESS with no reply on record and sends ONE in-session corrective turn
+(`[reply-recovery] …`); the record comes from the TOOL (`registry.note_replied`, written only when
+the reply call returned without an error) and the budget is `registry.NUDGE_LIMIT = 1` per message.
+The nudge carries no `amhousing` raw_message marker, so it can never nudge itself. When you add a
+new "completion" op, file it in the same ledger or the safety net will nudge a turn that already
+finished its job.
+
 **Probe hygiene (learned the hard way):** when you inject a synthetic user/conversation/message to
 test the pipeline, wait for that session's `Turn ended:` line in the log before deleting the rows.
 Waiting only for the reply row is too early — the model can keep calling tools after writing it, and

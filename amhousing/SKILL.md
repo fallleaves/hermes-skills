@@ -49,7 +49,23 @@ reply). **Pass the fields FLAT at the top level of the arguments** (the nested
 `payload` shape also still resolves); identity fields are never sent — the
 adapter injects them. `scripts/turn_metrics.py` prints per-turn api calls, tool
 calls, tokens and the slowest call — run it before optimising latency (real
-turns: latency tracks input tokens + provider variance, NOT tool discovery). The business rules below (inference checklist, decision ladder, safety
+turns: latency tracks input tokens + provider variance, NOT tool discovery).
+
+**Do NOT re-enable tool_search in the app profile.** `~/.hermes/profiles/amhousing-app/config.yaml`
+carries `tools.tool_search.enabled: 'off'` — the path matters (`tools/tool_search`, read by
+`tools/tool_search.py::_config_from_loader`; a top-level `tool_search:` key is silently ignored).
+Why: the `amhousing` toolset is not in core's `_DIRECT_SURFACE_TOOLSETS`, so with deferral on, every
+turn opened with `tool_search` + `tool_describe` (≈9 s, 2 API calls) and the model misused the
+`tool_call` meta-tool to batch local tools, which core rejects (`Local tools require one entry per
+tool_call`) — present in 4 of 8 measured turns. With `enabled: 'off'` the schemas stay in the prompt
+and both symptoms vanish (measured: 0 tool_search/tool_call lines for a whole turn). A from-scratch
+provision of the profile must re-apply this key.
+
+**Probe hygiene (learned the hard way):** when you inject a synthetic user/conversation/message to
+test the pipeline, wait for that session's `Turn ended:` line in the log before deleting the rows.
+Waiting only for the reply row is too early — the model can keep calling tools after writing it, and
+deleting the token mid-turn yields `token_unknown` / `conversation_disabled` 401s that are YOUR
+probe's artifact, not a product defect. The business rules below (inference checklist, decision ladder, safety
 boundaries, warranty/rent math, scope resolution) remain CANONICAL for both
 planes; the maintenance/cron scripts remain valid for the owner's own
 Telegram/CLI/operator sessions.

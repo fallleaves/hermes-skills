@@ -67,6 +67,23 @@ Waiting only for the reply row is too early — the model can keep calling tools
 deleting the token mid-turn yields `token_unknown` / `conversation_disabled` 401s that are YOUR
 probe's artifact, not a product defect.
 
+**A config change only reaches NEW sessions — rotate deliberately.** The app-profile agent
+resolves its tool list per SESSION, so `tools.tool_search.enabled: 'off'` (or any toolset change)
+leaves running conversations on the old list; the gateway never rotates them by itself (every
+session row keeps `ended_at` NULL). To rotate one conversation:
+`SessionDB().end_session(sid, "operator_rotation")` with `HERMES_HOME` = the app profile — the
+reason must NOT be one of the recoverable ones (`agent_close`, `ws_orphan_reap`,
+`superseded_by_resume`, `startup_orphan_reap`), because `_PEER_BY_KEY_SQL` treats those as
+reusable. Then confirm with that same predicate (it must return no row for the session key) and
+restart the profile's gateway. The transcript stays in `state.db` — ending a session is not a
+delete.
+
+**Never let a write report success for a field it dropped.** `buildPatch` returns the keys it did
+not use (`unknown`), write results carry `ignored`, and `invalid` replies carry `accepted`; a live
+turn silently lost a `description` that way and the model had no signal. When you add a field to a
+write op, add it to that op's spec list (and the tool-schema field list in `tool.py`) in the same
+change.
+
 **An empty history search is load-bearing (do not remove):** `searchHistory()` attaches
 `NO_MATCH_NOTE` when a real search finds nothing and `REJECTED_QUERY_NOTE` when the query never ran
 (blank / over the cap), and NO note when there are hits. A bare `{results: []}` made the model

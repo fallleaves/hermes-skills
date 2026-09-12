@@ -108,6 +108,15 @@ per-house dump now returns `doors`, `systems` (appliances incl. a smart lock —
 a system (`system.upsert` + `lastServiceMs`/`serviceIntervalMonths`) and put the door itself in
 `door.upsert` — do not model the device as a door field.
 
+**The chain: house → door → device (2026-09-12).** `system.upsert` takes `doorId` — a smart lock hangs
+on its DOOR, not in a room (`roomId` stays for devices that really sit in a room):
+`door.upsert {houseId, name:"前门", type:"front"}` then
+`system.upsert {houseId, type:"smart_lock", name, doorId:<door id>}`. `door.upsert` also takes `roomId`
+for an INTERIOR door (omit it for the front door — a house-level opening has no room). Never park an id
+in `notes`: the link is a column now. The dump carries `doors[].roomId`/`room` and
+`systems[].doorId`/`door` so the whole chain is readable in one call. Migrations:
+`20260911230000_add_house_doors` + `20260912070000_door_links`.
+
 **Probe hygiene (learned the hard way):** when you inject a synthetic user/conversation/message to
 test the pipeline, wait for that session's `Turn ended:` line in the log before deleting the rows.
 Waiting only for the reply row is too early — the model can keep calling tools after writing it, and

@@ -117,6 +117,26 @@ in `notes`: the link is a column now. The dump carries `doors[].roomId`/`room` a
 `systems[].doorId`/`door` so the whole chain is readable in one call. Migrations:
 `20260911230000_add_house_doors` + `20260912070000_door_links`.
 
+**Floor plan → layout (2026-09-12).** The 3D view needs geometry, and nothing has any yet: `Room.area/
+length/width/height/floor` were 0/19 filled and no row carried a position. The extraction is
+CHAT-FIRST — the owner sends the plan image in the app chat, then:
+
+1. archive it (`op: "file"`) — the reply carries the `HouseFile` id;
+2. `plan.upsert {houseId, fileId}` to pin which file IS the plan;
+3. read it with `vision_analyze` (the attachment path comes from the message) and ask for: every room
+   (name/type), its **printed** dimensions in metres, and its **relative position** as normalized 0..1
+   coordinates of the bounding box (`x,y` = top-left, `w,d` = size); doors with the wall they sit on;
+   labelled fixtures/appliances. **Unreadable → omit the field** — never invent a number or a position;
+4. `layout.upsert {houseId, unit:"plan"|"m", source:"vision", confirmed:false, rooms:[…], doors:[…],
+   systems:[…]}` — one call; rooms carry `x/y/w/d/floor/area/length/width/height`, doors `x/y/wall`,
+   systems `mount/x/y/h`. Use `unit:"m"` ONLY when the plan shows a scale or dimensions; otherwise
+   `unit:"plan"` (normalized).
+
+Rules: `layout.upsert` MERGES per row, so confirming one room never wipes another's geometry; a
+batch is all-or-nothing (validate everything, then write). The owner's correction goes back through
+the same op with `source:"owner", confirmed:true` — that flag is what the UI reads to tell
+"机器读出来的" from "人确认过的". Never set `confirmed:true` on the owner's behalf.
+
 **Probe hygiene (learned the hard way):** when you inject a synthetic user/conversation/message to
 test the pipeline, wait for that session's `Turn ended:` line in the log before deleting the rows.
 Waiting only for the reply row is too early — the model can keep calling tools after writing it, and

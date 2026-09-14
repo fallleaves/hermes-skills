@@ -21,25 +21,6 @@ Full reference: https://hermes-agent.nousresearch.com/docs/user-guide/configurat
 | `checkpoints` | `enabled`, `max_snapshots` (50) |
 | `curator` | `enabled`, `consolidate` (false, opt-in aux-model consolidation), `interval_hours`, `stale_after_days` |
 
-### Reasoning effort
-
-`agent.reasoning_effort` (global: minimal|low|medium|high|xhigh|max|ultra, or `false` to disable) and
-`agent.reasoning_overrides.<model>` (per-model). Resolution order, one chokepoint
-(`hermes_constants.resolve_reasoning_config`): live session `/reasoning --session` override >
-per-model override for the current model > global. Set/clear with
-`hermes config set|unset agent.reasoning_overrides.<model>` (use `hermes -p <name> ...` per profile;
-a bare `hermes` writes the STICKY profile, not necessarily `default`).
-
-Pitfall: override keys match by exact-and-spelling-variant only (`resolve_per_model_reasoning_effort`
-tolerates dots↔dashes, provider/aggregator prefixes and known prefixes — it never drops version
-segments). `deepseek-v4-flash: max` does NOT match a configured `deepseek-v4.1-flash`; the entry is
-silently inert. Verify with a two-line python call to `resolve_reasoning_config(cfg, model)` rather
-than eyeballing the YAML.
-
-Config edits apply **without a gateway restart**: the effective-config cache is mtime-signature
-keyed and reasoning is re-resolved per turn and set per message on the cached agent (it is excluded
-from the agent cache signature).
-
 `hermes config check` reports sections missing from an older config.
 
 ### Toolsets

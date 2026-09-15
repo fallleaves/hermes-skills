@@ -104,3 +104,26 @@ model must accept video. `_configured_aux_model(("video","vision"), …)` resolv
 `qwen3.8-flash`) and leave `auxiliary.vision` on the better image model. Enabling the
 toolset alone silently keeps video on the image-only aux model, which then fails with a
 capability error at call time.
+
+### OpenCode Go plan specifics (tested against a live key)
+
+- Go is the **$10/month subscription**; its base URL is `https://opencode.ai/zen/go/v1` and a
+  live `GET /models` there returns 37 ids. The **only GPT model on the plan is
+  `gpt-5.6-luna`** — every other GPT id in the Zen catalog (`gpt-6-astra`, `gpt-5.6-sol/-terra`,
+  `gpt-5.5*`, `gpt-5.4*`, `gpt-5.3-codex*`, `gpt-5.2*`, `gpt-5.1*`) answers
+  `401 ModelError: Model X is not supported`. Those live on the **Zen** endpoint
+  (`https://opencode.ai/zen/v1/responses`), which is a SEPARATE wallet from the Go
+  subscription: a Go key used there returns `401 CreditsError: Insufficient balance`.
+- `gpt-5.6-luna` is served on the **Responses wire** (`/zen/go/v1/responses`). A plain
+  chat/completions call for it returns `500 Internal server error`, which is easy to misread as
+  an outage. Hermes routes it correctly by itself — verified end to end with
+  `hermes chat -q 'Reply with exactly: LUNA-OK' -m gpt-5.6-luna --provider opencode-go`.
+- luna modalities (tested): text ✓, **image ✓** (read a code number out of a PNG on the
+  Responses wire), pdf ✓ (catalog) — **video ✗** (`input_video` and `input_file` with an mp4
+  both 400). So the plan's single GPT model cannot be used for `video_analyze`. Note that a
+  tiny `max_output_tokens` on the Responses wire returns EMPTY `output_text` and looks like a
+  vision failure; give it a few hundred tokens.
+- Go limits: $12 per 5 h, $30/week, $60/month of usage; luna's estimated allowance is
+  ~2,050 requests per 5 h (among the most generous on the plan).
+- OpenCode's own Go docs list **Hermes as a validated client** for the
+  `x-opencode-session` requirement (the fix landed after v0.21.0).

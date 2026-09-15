@@ -72,3 +72,35 @@ Built-in aliases (catalog-resolved against the active provider): `sonnet`,
 `opus`, `haiku`, `claude`, `gpt5`, `gpt`, `codex`, `o3`, `o4`, `gemini`,
 `deepseek`, `grok`, `llama`, `qwen`, `minimax`, `nemotron`, `kimi`, `glm`,
 `step`, `mimo`, `trinity`.
+
+### Multimodal input on OpenCode Zen/Go — test it, don't trust the catalog
+
+`opencode-go` / `opencode-zen` (`https://opencode.ai/zen/go|/v1`) require an opaque
+`x-opencode-session` header on EVERY request, main turns and aux calls alike
+(`agent/opencode_affinity.py`, derived from the Hermes session id; documented in
+`website/docs/integrations/providers.md`). A bare request without it fails
+`400 MissingSessionID` — that is a missing-header artifact, not a capability verdict,
+so reproducing provider behavior outside a real session must set the header itself.
+
+The models.dev catalog overstates video support: it lists 15 of 36 `opencode-go` models
+with `video` input, but the relay only accepts an OpenAI-style `video_url` content part
+for the Qwen 3.6+/3.7/3.8 line plus `minimax-m3` and `kimi-k2.7-code`. Probed with a real
+2 s mp4 as a base64 data URL (`{"type":"video_url","video_url":{"url":"data:video/mp4;base64,…"}}`):
+
+- accepted and actually read the frames: `qwen3.8-flash`, `qwen3.7-plus`, `qwen3.6-plus`,
+  `qwen3.8-max`, `minimax-m3`, `kimi-k2.7-code`
+- accepted, returned nothing usable: `mimo-v2.5`
+- rejected the part (`only text and image_url are …`): `glm-5.3-flash` — the model most
+  installs point `auxiliary.vision` at — plus `kimi-k3` and any catalogued image-only
+  model (control: `deepseek-v4.1-flash`)
+- collapses unrelated to video: `kimi-k2.5` / `qwen3.5-plus` "Model is unavailable",
+  `kimi-k2.6` "No endpoints found", `ox-alpha-free` "not supported",
+  `muse-spark-1.{2,3}-contributor` 403 DataPolicyError
+
+Consequence for `video_analyze` (opt-in `video` toolset, models.dev independent): the aux
+model must accept video. `_configured_aux_model(("video","vision"), …)` resolves
+`auxiliary.video.model` first and only then `auxiliary.vision.model`, so point
+`auxiliary.video.{provider,model}` at a working pair (e.g. `opencode-go` /
+`qwen3.8-flash`) and leave `auxiliary.vision` on the better image model. Enabling the
+toolset alone silently keeps video on the image-only aux model, which then fails with a
+capability error at call time.

@@ -27,6 +27,8 @@ __pycache__/
 # Runtime/temp state - never push
 .usage.json.lock
 .curator_ledger.jsonl
+# curator's weekly backup bundles (tar.gz) — runtime state, never push
+.curator_backups/
 .hub/
 # skills_sync rewrites this on every bundled-skill sync (skill_name:origin_hash)
 .bundled_manifest
